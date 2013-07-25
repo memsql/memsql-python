@@ -1,4 +1,4 @@
-from memsql.common import connection_pool
+from memsql.common.connection_pool import ConnectionPool, PoolConnectionException
 from wraptor.decorators import memoize
 import threading
 import random
@@ -13,9 +13,9 @@ class RandomAggregatorPool:
     aggregators by periodically calling `SHOW AGGREGATORS`.
     """
 
-    def __init__(self, db):
+    def __init__(self):
         self.logger = logging.getLogger('memsql.random_aggregator_pool')
-        self._pool = connection_pool.Pool()
+        self._pool = ConnectionPool()
         self._aggregators = []
         self._aggregator = None
         self._refresh_aggregator_list = memoize(30)(self._update_aggregator_list)
@@ -30,7 +30,7 @@ class RandomAggregatorPool:
         if self._aggregator:
             try:
                 return self._pool.connect(self._aggregator[0], self._aggregator[1], user, password, database)
-            except connection_pool.PoolConnectionException:
+            except PoolConnectionException:
                 self._aggregator = None
                 pass
 
@@ -52,7 +52,7 @@ class RandomAggregatorPool:
 
             try:
                 return self._pool.connect(self._aggregator[0], self._aggregator[1], user, password, database)
-            except connection_pool.PoolConnectionException as e:
+            except PoolConnectionException as e:
                 last_exception = e
         else:
             with self._lock:
