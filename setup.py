@@ -30,7 +30,7 @@ setup(
     license='LICENSE.txt',
     description='Useful utilities and plugins for MemSQL integration.',
     long_description=open('README.rst').read(),
-    require=['wraptor'],
-    tests_require=['pytest'],
+    requires=['wraptor'],
+    tests_require=['pytest', 'mock'],
     cmdclass={ 'test': PyTest },
 )
