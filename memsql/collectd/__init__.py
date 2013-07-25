@@ -14,8 +14,7 @@ def memsql_config(config):
         password='',
         database='dashboard',
         typesdb={},
-        previous_values={},
-        pool=RandomAggregatorPool()
+        previous_values={}
     )
 
     for child in config.children:
@@ -34,6 +33,15 @@ def memsql_config(config):
         elif key == 'typesdb':
             for v in child.values:
                 memsql_parse_types_file(v, data)
+
+    # initialize the aggregator pool
+    data['pool'] = RandomAggregatorPool(
+        host=data['host'],
+        port=data['port'],
+        user=data['user'],
+        password=data['password'],
+        database=data['database']
+    )
 
     assert 'host' in data, 'MemSQL host is not defined'
     assert 'port' in data, 'MemSQL port is not defined'
@@ -82,7 +90,7 @@ def memsql_parse_types_file(path, data):
 
 def memsql_connect(data):
     """ Returns a live MemSQL connection. """
-    return data['pool'].connect(data['host'], data['port'], data['user'], data['password'], data['database'])
+    return data['pool'].connect()
 
 def memsql_write(collectd_sample, data=None):
     """ Write handler for collectd.
@@ -167,4 +175,3 @@ def persist_value(new_value, data_source_name, data_source_type, collectd_sample
             (created, host, plugin, type, instance, category, value_name, value)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """, *query_params)
-

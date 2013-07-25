@@ -13,55 +13,81 @@ class RandomAggregatorPool:
     aggregators by periodically calling `SHOW AGGREGATORS`.
     """
 
-    def __init__(self):
+    def __init__(self, host, port, user='root', password='', database='information_schema'):
+        """ Initialize the RandomAggregatorPool with connection
+        information for an aggregator in a MemSQL Distributed System.
+
+        All aggregator connections will share the same user/password/database.
+        """
         self.logger = logging.getLogger('memsql.random_aggregator_pool')
         self._pool = ConnectionPool()
-        self._aggregators = []
-        self._aggregator = None
         self._refresh_aggregator_list = memoize(30)(self._update_aggregator_list)
         self._lock = threading.Lock()
 
-    def connect(self, host, port, user, password, database):
-        conn = self._connect(host, port, user, password, database)
+        self._primary_aggregator = (host, port)
+        self._user = user
+        self._password = password
+        self._database = database
+        self._aggregators = []
+        self._aggregator = None
+
+    def connect(self):
+        """ Returns an aggregator connection, and periodically updates the aggregator list. """
+        conn = self._connect()
         self._refresh_aggregator_list(conn)
         return conn
 
-    def _connect(self, host, port, user, password, database):
+    def _pool_connect(self, agg):
+        """ `agg` should be (host, port)
+            Returns a live connection from the connection pool
+        """
+        return self._pool.connect(agg[0], agg[1], self._user, self._password, self._database)
+
+    def _connect(self):
+        """ Returns an aggregator connection. """
         if self._aggregator:
             try:
-                return self._pool.connect(self._aggregator[0], self._aggregator[1], user, password, database)
+                return self._pool_connect(self._aggregator)
             except PoolConnectionException:
                 self._aggregator = None
-                pass
 
-        if not self._aggregators:
-            with self._pool.connect(host, port, user, password, database) as conn:
+        if not len(self._aggregators):
+            with self._pool_connect(self._primary_aggregator) as conn:
                 self._update_aggregator_list(conn)
                 conn.expire()
 
-        assert self._aggregators, "Failed to retrieve a list of aggregators"
+        with self._lock:
+            random.shuffle(self._aggregators)
 
-        # we will run a few attempts of connecting to an
-        # aggregator
         last_exception = None
-        for i in range(10):
-            with self._lock:
-                self._aggregator = random.choice(self._aggregators)
-
-            self.logger.debug('Connecting to %s:%s' % (self._aggregator[0], self._aggregator[1]))
+        for aggregator in self._aggregators:
+            self.logger.debug('Attempting connection with %s:%s' % (aggregator[0], aggregator[1]))
 
             try:
-                return self._pool.connect(self._aggregator[0], self._aggregator[1], user, password, database)
+                conn = self._pool_connect(aggregator)
+                # connection successful!
+                self._aggregator = aggregator
+                return conn
             except PoolConnectionException as e:
+                # connection error
                 last_exception = e
         else:
             with self._lock:
+                # bad news bears...  try again later
                 self._aggregator = None
                 self._aggregators = []
 
             raise last_exception
 
     def _update_aggregator_list(self, conn):
+        rows = conn.query('SHOW AGGREGATORS')
         with self._lock:
-            self._aggregators = [(r['Host'], r['Port']) for r in conn.query('SHOW AGGREGATORS')]
-            self.logger.debug('Aggregator list is updated to %s. Current aggregator is %s.' % (self._aggregators, self._aggregator))
+            self._aggregators = []
+            for row in rows:
+                if row.Host == '127.0.0.1':
+                    # this is the aggregator we are connecting to
+                    row['Host'] = conn.connection_info()[0]
+                self._aggregators.append((row.Host, row.Port))
+
+        assert self._aggregators, "Failed to retrieve a list of aggregators"
+        self.logger.debug('Aggregator list is updated to %s. Current aggregator is %s.' % (self._aggregators, self._aggregator))

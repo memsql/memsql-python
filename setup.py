@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 
-from distribute_setup import use_setuptools
-use_setuptools()
-
-from setuptools import setup, find_packages
+from setuptools import setup
 from setuptools.command.test import test as TestCommand
 
 # get version
@@ -32,7 +29,11 @@ setup(
     description='Useful utilities and plugins for MemSQL integration.',
     long_description=open('README.rst').read(),
 
-    packages=find_packages(),
+    packages=[
+        'memsql',
+        'memsql.collectd',
+        'memsql.common',
+    ],
     install_requires=['MySQL-python>=1.2.4', 'wraptor'],
     tests_require=['pytest', 'mock'],
     cmdclass={ 'test': PyTest },
