@@ -20,7 +20,7 @@ class PyTest(TestCommand):
 
 setup(
     name='MemSQL',
-    version=__version__,
+    version=__version__,    # this is defined by the "exec(f.read())" at the top of this file.
     author='MemSQL',
     author_email='support@memsql.com',
     packages=[
@@ -30,6 +30,7 @@ setup(
     license='LICENSE.txt',
     description='Useful utilities and plugins for MemSQL integration.',
     long_description=open('README.rst').read(),
+    require=['wraptor'],
     tests_require=['pytest'],
     cmdclass={ 'test': PyTest },
 )
