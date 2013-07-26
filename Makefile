@@ -1,2 +1,9 @@
-all:
-	rm -rf build/ dist; ./setup.py clean --all sdist bdist bdist_egg
+all: clean
+	rm -rf build/ dist; ./setup.py sdist bdist bdist_egg
+
+clean:
+	rm -rf *.egg memsql.egg-info dist build
+	./setup.py clean --all
+
+test:
+	./setup.py test
