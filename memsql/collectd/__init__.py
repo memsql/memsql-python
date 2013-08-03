@@ -2,21 +2,23 @@ import collectd
 from datetime import datetime
 from memsql.common.random_aggregator_pool import RandomAggregatorPool
 
-def memsql_config(config):
-    """ Handle setting up collectd-memsql. """
+# This is a data structure shared by every callback. We store all the
+# configuration and globals in it.
+MEMSQL_DATA = dict(
+    host=None,
+    port=None,
+    user='root',
+    password='',
+    database='dashboard',
+    typesdb={},
+    previous_values={}
+)
 
-    # This is a data structure passed to every memsql_write. We store
-    # all the configuration and globals here
-    data = dict(
-        host=None,
-        port=None,
-        user='root',
-        password='',
-        database='dashboard',
-        typesdb={},
-        previous_values={}
-    )
+###################################
+## Initialization/Config functions
 
+def memsql_config(config, data):
+    """ Handle configuring collectd-memsql. """
     for child in config.children:
         collectd.debug("Config settings %s" % child.key)
         key = child.key.lower()
@@ -34,6 +36,15 @@ def memsql_config(config):
             for v in child.values:
                 memsql_parse_types_file(v, data)
 
+def memsql_init(data):
+    """ Handles initializing collectd-memsql. """
+
+    # verify we have required params
+    assert data['host'] is not None, 'MemSQL host is not defined'
+    assert data['port'] is not None, 'MemSQL port is not defined'
+
+    collectd.info('Initializing collectd-memsql with %s:%s' % (data['host'], data['port']))
+
     # initialize the aggregator pool
     data['pool'] = RandomAggregatorPool(
         host=data['host'],
@@ -43,13 +54,11 @@ def memsql_config(config):
         database=data['database']
     )
 
-    assert 'host' in data, 'MemSQL host is not defined'
-    assert 'port' in data, 'MemSQL port is not defined'
+def memsql_shutdown(data):
+    """ Handles terminating collectd-memsql. """
 
-    collectd.info('Initializing collectd-memsql with %s:%s' % (data['host'], data['port']))
-    collectd.register_write(memsql_write, data)
-
-collectd.register_config(memsql_config)
+    collectd.info('Terminating collectd-memsql')
+    data['pool'].close()
 
 #########################
 ## Write/utility functions
@@ -87,10 +96,6 @@ def memsql_parse_types_file(path, data):
         types[type_name] = v
 
     f.close()
-
-def memsql_connect(data):
-    """ Returns a live MemSQL connection. """
-    return data['pool'].connect()
 
 def memsql_write(collectd_sample, data=None):
     """ Write handler for collectd.
@@ -169,9 +174,17 @@ def persist_value(new_value, data_source_name, data_source_type, collectd_sample
         rate
     ]
 
-    with memsql_connect(data) as conn:
+    with data['pool'].connect() as conn:
         conn.execute("""
             INSERT INTO analytics
             (created, host, plugin, type, instance, category, value_name, value)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """, *query_params)
+
+######################
+## Register callbacks
+
+collectd.register_config(memsql_config, MEMSQL_DATA)
+collectd.register_init(memsql_init, MEMSQL_DATA)
+collectd.register_write(memsql_write, MEMSQL_DATA)
+collectd.register_shutdown(memsql_shutdown, MEMSQL_DATA)

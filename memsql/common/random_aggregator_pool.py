@@ -37,6 +37,9 @@ class RandomAggregatorPool:
         self._refresh_aggregator_list(conn)
         return conn
 
+    def close(self):
+        self._pool.close()
+
     def _pool_connect(self, agg):
         """ `agg` should be (host, port)
             Returns a live connection from the connection pool
