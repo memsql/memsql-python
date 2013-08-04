@@ -1,6 +1,11 @@
-import collectd
-from datetime import datetime
+try:
+    import collectd
+except:
+    pass
+
 from memsql.common.random_aggregator_pool import RandomAggregatorPool
+from memsql.collectd.analytics import AnalyticsCache, AnalyticsRow
+from wraptor.decorators import throttle
 
 # This is a data structure shared by every callback. We store all the
 # configuration and globals in it.
@@ -11,7 +16,7 @@ MEMSQL_DATA = dict(
     password='',
     database='dashboard',
     typesdb={},
-    previous_values={}
+    values_cache=AnalyticsCache()
 )
 
 ###################################
@@ -97,11 +102,13 @@ def memsql_parse_types_file(path, data):
 
     f.close()
 
-def memsql_write(collectd_sample, data=None):
+def memsql_write(collectd_sample, data):
     """ Write handler for collectd.
     This function is called per sample taken from every plugin.  It is
     parallelized among multiple threads by collectd.
     """
+
+    # get the value types for this sample
     types = data['typesdb']
     if collectd_sample.type not in types:
         collectd.info('memsql_writer: do not know how to handle type %s. do you have all your types.db files configured?' % collectd_sample.type)
@@ -113,78 +120,74 @@ def memsql_write(collectd_sample, data=None):
         collectd.info('memsql_writer: differing number of values for type %s' % collectd_sample.type)
         return
 
+    # for each value in this sample, insert it into the cache
     for (value_type, value) in zip(value_types, collectd_sample.values):
-        persist_value(value, value_type[0], value_type[1], collectd_sample, data)
+        cache_value(value, value_type[0], value_type[1], collectd_sample, data)
 
-def persist_value(new_value, data_source_name, data_source_type, collectd_sample, data):
-    """ Persist a new value to the database.
-    Handles converting COUNTER and DERIVE types.
+    # finally flush the cache
+    throttled_flush(data)
+
+@throttle(1)
+def throttled_flush(data):
+    with data['pool'].connect() as conn:
+        data['values_cache'].flush(conn)
+
+def cache_value(new_value, data_source_name, data_source_type, collectd_sample, data):
+    """ Cache a new value into the analytics cache.  Handles converting
+    COUNTER and DERIVE types.
     """
-    rate = None
+    values_cache = data['values_cache']
+
+    new_row = AnalyticsRow(
+        created=int(collectd_sample.time),
+        host=collectd_sample.host,
+        plugin=collectd_sample.plugin,
+        type=collectd_sample.type,
+        instance=collectd_sample.plugin_instance,
+        category=collectd_sample.type_instance,
+        value_name=data_source_name,
+        raw_value=new_value
+    )
+
+    previous_row = values_cache.swap_row(new_row)
 
     # special case counter and derive since we only care about the
     # "difference" between their values (rather than their actual value)
-    if data_source_type == 'COUNTER' or data_source_type == 'DERIVE':
-        key = (data_source_name,
-               data_source_type,
-               collectd_sample.plugin,
-               collectd_sample.plugin_instance,
-               collectd_sample.type,
-               collectd_sample.type_instance)
-
-        # get the previous values if they exist
-        old_value, old_time = data['previous_values'].get(key, [None, None])
-
-        # save the new value in previous values
-        data['previous_values'][key] = (new_value, collectd_sample.time)
-
-        if old_value is None:
-            # this was the first value, nothing to do
+    if (data_source_type == 'COUNTER' or data_source_type == 'DERIVE'):
+        if previous_row is None:
             return
 
+        old_value = previous_row.raw_value
+
         # don't let the time delta fall below 1
-        time_delta = float(max(1, collectd_sample.time - old_time))
+        time_delta = float(max(1, new_row.created - previous_row.created))
 
         # The following formula handles wrapping COUNTER data types
         # around since COUNTER's should never be negative.
         # Taken from: https://collectd.org/wiki/index.php/Data_source
         if data_source_type == 'COUNTER' and new_value < old_value:
             if old_value < 2 ** 32:
-                rate = (2 ** 32 - old_value + new_value) / time_delta
+                new_row.value = (2 ** 32 - old_value + new_value) / time_delta
             else:
-                rate = (2 ** 64 - old_value + new_value) / time_delta
+                new_row.value = (2 ** 64 - old_value + new_value) / time_delta
         else:
-            rate = (new_value - old_value) / time_delta
+            # the default wrap-around formula
+            new_row.value = (new_value - old_value) / time_delta
 
     elif data_source_type == 'GAUGE' or data_source_name == 'ABSOLUTE':
-        rate = new_value
+        new_row.value = new_value
 
     else:
         collectd.debug("MemSQL collectd. Undefined data source %s" % data_source_type)
-        return
-
-    query_params = [
-        datetime.fromtimestamp(int(collectd_sample.time)).strftime('%Y-%m-%d %H:%M:%S'),
-        collectd_sample.host,
-        collectd_sample.plugin,
-        collectd_sample.type,
-        collectd_sample.plugin_instance,
-        collectd_sample.type_instance,
-        data_source_name,
-        rate
-    ]
-
-    with data['pool'].connect() as conn:
-        conn.execute("""
-            INSERT INTO analytics
-            (created, host, plugin, type, instance, category, value_name, value)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        """, *query_params)
 
 ######################
 ## Register callbacks
 
-collectd.register_config(memsql_config, MEMSQL_DATA)
-collectd.register_init(memsql_init, MEMSQL_DATA)
-collectd.register_write(memsql_write, MEMSQL_DATA)
-collectd.register_shutdown(memsql_shutdown, MEMSQL_DATA)
+try:
+    collectd.register_config(memsql_config, MEMSQL_DATA)
+    collectd.register_init(memsql_init, MEMSQL_DATA)
+    collectd.register_write(memsql_write, MEMSQL_DATA)
+    collectd.register_shutdown(memsql_shutdown, MEMSQL_DATA)
+except:
+    # collectd not available
+    pass

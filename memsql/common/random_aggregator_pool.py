@@ -4,7 +4,7 @@ import threading
 import random
 import logging
 
-class RandomAggregatorPool:
+class RandomAggregatorPool(object):
     """ A automatic fail-over connection pool.
 
     One layer above the connection pool. It's purpose is to choose a
@@ -22,7 +22,7 @@ class RandomAggregatorPool:
         self.logger = logging.getLogger('memsql.random_aggregator_pool')
         self._pool = ConnectionPool()
         self._refresh_aggregator_list = memoize(30)(self._update_aggregator_list)
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
 
         self._primary_aggregator = (host, port)
         self._user = user
@@ -48,39 +48,38 @@ class RandomAggregatorPool:
 
     def _connect(self):
         """ Returns an aggregator connection. """
-        if self._aggregator:
-            try:
-                return self._pool_connect(self._aggregator)
-            except PoolConnectionException:
-                self._aggregator = None
-
-        if not len(self._aggregators):
-            with self._pool_connect(self._primary_aggregator) as conn:
-                self._update_aggregator_list(conn)
-                conn.expire()
-
         with self._lock:
+            if self._aggregator:
+                try:
+                    return self._pool_connect(self._aggregator)
+                except PoolConnectionException:
+                    self._aggregator = None
+
+            if not len(self._aggregators):
+                with self._pool_connect(self._primary_aggregator) as conn:
+                    self._update_aggregator_list(conn)
+                    conn.expire()
+
             random.shuffle(self._aggregators)
 
-        last_exception = None
-        for aggregator in self._aggregators:
-            self.logger.debug('Attempting connection with %s:%s' % (aggregator[0], aggregator[1]))
+            last_exception = None
+            for aggregator in self._aggregators:
+                self.logger.debug('Attempting connection with %s:%s' % (aggregator[0], aggregator[1]))
 
-            try:
-                conn = self._pool_connect(aggregator)
-                # connection successful!
-                self._aggregator = aggregator
-                return conn
-            except PoolConnectionException as e:
-                # connection error
-                last_exception = e
-        else:
-            with self._lock:
+                try:
+                    conn = self._pool_connect(aggregator)
+                    # connection successful!
+                    self._aggregator = aggregator
+                    return conn
+                except PoolConnectionException as e:
+                    # connection error
+                    last_exception = e
+            else:
                 # bad news bears...  try again later
                 self._aggregator = None
                 self._aggregators = []
 
-            raise last_exception
+                raise last_exception
 
     def _update_aggregator_list(self, conn):
         rows = conn.query('SHOW AGGREGATORS')
@@ -92,5 +91,5 @@ class RandomAggregatorPool:
                     row['Host'] = conn.connection_info()[0]
                 self._aggregators.append((row.Host, row.Port))
 
-        assert self._aggregators, "Failed to retrieve a list of aggregators"
+        assert len(self._aggregators) > 0, "Failed to retrieve a list of aggregators"
         self.logger.debug('Aggregator list is updated to %s. Current aggregator is %s.' % (self._aggregators, self._aggregator))
