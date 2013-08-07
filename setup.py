@@ -34,7 +34,7 @@ setup(
         'memsql.collectd',
         'memsql.common',
     ],
-    install_requires=['MySQL-python>=1.2.4', 'wraptor'],
+    install_requires=['ordereddict', 'MySQL-python>=1.2.4', 'wraptor'],
     tests_require=['pytest', 'mock'],
     cmdclass={ 'test': PyTest },
 )

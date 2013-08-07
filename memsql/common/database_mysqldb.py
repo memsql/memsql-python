@@ -4,7 +4,11 @@ import _mysql
 import itertools
 import time
 
-from collections import OrderedDict
+try:
+    from collections import OrderedDict
+except:
+    from ordereddict import OrderedDict
+
 from MySQLdb.converters import conversions
 
 MySQLError = _mysql.MySQLError
