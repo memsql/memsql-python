@@ -143,8 +143,8 @@ def cache_value(new_value, data_source_name, data_source_type, collectd_sample, 
         host=collectd_sample.host,
         plugin=collectd_sample.plugin,
         type=collectd_sample.type,
-        instance=collectd_sample.plugin_instance,
-        category=collectd_sample.type_instance,
+        plugin_instance=collectd_sample.plugin_instance,
+        type_instance=collectd_sample.type_instance,
         value_name=data_source_name,
         raw_value=new_value
     )

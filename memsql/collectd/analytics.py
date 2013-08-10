@@ -1,10 +1,20 @@
 from datetime import datetime
 import threading
 
-ANALYTICS_COLUMNS = [ 'host', 'plugin', 'type', 'instance', 'category', 'value_name', 'created', 'value' ]
+ANALYTICS_COLUMNS = [ "alpha", "beta", "gamma", "delta", "epsilon", "zeta", "created", "value" ]
 
 class AnalyticsRow(object):
-    __slots__ = [ 'raw_value' ] + ANALYTICS_COLUMNS
+    __slots__ = [
+        'raw_value',
+        'host',
+        'plugin',
+        'type',
+        'type_instance',
+        'plugin_instance',
+        'value_name',
+        'created',
+        'value'
+    ]
 
     def __init__(self, **kwargs):
         for key, value in kwargs.items():
@@ -16,7 +26,7 @@ class AnalyticsRow(object):
 
     def classifier(self):
         """ Returns a tuple which fully classifies the collectd metric represented. """
-        return (self.host, self.plugin, self.type, self.instance, self.category, self.value_name)
+        return (self.host, self.plugin, self.plugin_instance, self.type, self.type_instance, self.value_name)
 
     def values(self):
         """ Returns the entire row as a tuple (classifier with created and value). """
