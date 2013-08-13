@@ -18,7 +18,15 @@ class AnalyticsRow(object):
 
     def __init__(self, **kwargs):
         for key, value in kwargs.items():
-            setattr(self, key, value)
+            setattr(self, key, self._parse_val(key, value))
+
+    def _parse_val(self, key, value):
+        if key in ('value', 'raw_value', 'created'):
+            return value
+        elif value:
+            return value.replace('.', '_')
+        else:
+            return "NULL"
 
     @property
     def iso_timestamp(self):
