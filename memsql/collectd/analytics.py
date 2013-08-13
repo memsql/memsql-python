@@ -1,7 +1,7 @@
 from datetime import datetime
 import threading
 
-ANALYTICS_COLUMNS = [ "alpha", "beta", "gamma", "delta", "epsilon", "zeta", "created", "value" ]
+ANALYTICS_COLUMNS = [ "alpha", "beta", "gamma", "delta", "epsilon", "zeta", "created", "value", "classifier" ]
 
 class AnalyticsRow(object):
     __slots__ = [
@@ -38,7 +38,9 @@ class AnalyticsRow(object):
 
     def values(self):
         """ Returns the entire row as a tuple (classifier with created and value). """
-        return self.classifier() + (self.iso_timestamp, self.value)
+        classifier = self.classifier()
+        joined_classifier = '.'.join(classifier)
+        return classifier + (self.iso_timestamp, self.value, joined_classifier)
 
 class AnalyticsCache(object):
     """ A thread safe cache for analytics rows.  Can efficiently flush
