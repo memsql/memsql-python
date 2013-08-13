@@ -139,14 +139,14 @@ def cache_value(new_value, data_source_name, data_source_type, collectd_sample, 
     values_cache = data['values_cache']
 
     new_row = AnalyticsRow(
-        created=int(collectd_sample.time),
-        host=collectd_sample.host,
-        plugin=collectd_sample.plugin,
-        type=collectd_sample.type,
-        plugin_instance=collectd_sample.plugin_instance,
-        type_instance=collectd_sample.type_instance,
-        value_name=data_source_name,
-        raw_value=new_value
+        int(collectd_sample.time),
+        new_value,
+        collectd_sample.host,
+        collectd_sample.plugin,
+        collectd_sample.plugin_instance,
+        collectd_sample.type,
+        collectd_sample.type_instance,
+        data_source_name
     )
 
     previous_row = values_cache.swap_row(new_row)

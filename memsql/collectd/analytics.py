@@ -1,46 +1,43 @@
 from datetime import datetime
 import threading
 
-ANALYTICS_COLUMNS = [ "alpha", "beta", "gamma", "delta", "epsilon", "zeta", "created", "value", "classifier" ]
+CLASSIFIERS = [ "alpha", "beta", "gamma", "delta", "epsilon", "zeta" ]
+ANALYTICS_COLUMNS = CLASSIFIERS + [ "created", "value", "classifier" ]
 
 class AnalyticsRow(object):
     __slots__ = [
         'raw_value',
-        'host',
-        'plugin',
-        'type',
-        'type_instance',
-        'plugin_instance',
-        'value_name',
+        'classifier',
         'created',
         'value'
     ]
 
-    def __init__(self, **kwargs):
-        for key, value in kwargs.items():
-            setattr(self, key, self._parse_val(key, value))
+    def __init__(self, created, raw_value, *args):
+        self.created = created
+        self.raw_value = raw_value
 
-    def _parse_val(self, key, value):
-        if key in ('value', 'raw_value', 'created'):
-            return value
-        elif value:
+        classifier = []
+        for value in args:
+            value = self._parse_val(value)
+            if value:
+                classifier.append(value)
+        [classifier.append("NULL") for i in range(len(CLASSIFIERS) - len(classifier))]
+        self.classifier = tuple(classifier)
+
+    def _parse_val(self, value):
+        if value:
             return value.replace('.', '_')
         else:
-            return "NULL"
+            return None
 
     @property
     def iso_timestamp(self):
         return datetime.utcfromtimestamp(int(self.created)).strftime('%Y-%m-%d %H:%M:%S')
 
-    def classifier(self):
-        """ Returns a tuple which fully classifies the collectd metric represented. """
-        return (self.host, self.plugin, self.plugin_instance, self.type, self.type_instance, self.value_name)
-
     def values(self):
         """ Returns the entire row as a tuple (classifier with created and value). """
-        classifier = self.classifier()
-        joined_classifier = '.'.join(classifier)
-        return classifier + (self.iso_timestamp, self.value, joined_classifier)
+        joined_classifier = '.'.join([x for x in self.classifier if x != 'NULL'])
+        return self.classifier + (self.iso_timestamp, self.value, joined_classifier)
 
 class AnalyticsCache(object):
     """ A thread safe cache for analytics rows.  Can efficiently flush
@@ -55,7 +52,7 @@ class AnalyticsCache(object):
         """ Stores new_row in the cache and returns the previous row
         with the same hash or None.
         """
-        classifier = new_row.classifier()
+        classifier = new_row.classifier
         with self._lock:
             self._pending.append(new_row)
             previous_row, self._previous_rows[classifier] = self._previous_rows.get(classifier, None), new_row
