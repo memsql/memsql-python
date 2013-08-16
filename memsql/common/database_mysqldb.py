@@ -38,7 +38,6 @@ class Connection(object):
         self.max_idle_time = max_idle_time
 
         sys_vars = {
-            "time_zone":             "+0:00",
             "character_set_server":  "utf8",
             "collation_server":      "utf8_general_ci"
         }
