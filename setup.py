@@ -30,12 +30,8 @@ setup(
     description='Useful utilities and plugins for MemSQL integration.',
     long_description=open('README.rst').read(),
 
-    packages=[
-        'memsql',
-        'memsql.collectd',
-        'memsql.common',
-    ],
-    install_requires=['ordereddict', 'MySQL-python>=1.2.4', 'wraptor'],
+    packages=[ 'memsql', 'memsql.collectd', 'memsql.common', ],
+    install_requires=['ordereddict', 'MySQL-python>=1.2.4', 'wraptor', 'netifaces'],
     tests_require=['pytest', 'mock'],
     cmdclass={ 'test': PyTest },
 )

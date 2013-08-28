@@ -30,12 +30,21 @@ class RandomAggregatorPool(object):
         self._database = database
         self._aggregators = []
         self._aggregator = None
+        self._master_aggregator = None
 
     def connect(self):
         """ Returns an aggregator connection, and periodically updates the aggregator list. """
         conn = self._connect()
         self._refresh_aggregator_list(conn)
         return conn
+
+    def connect_master(self):
+        if self._master_aggregator is None:
+            self._update_aggregator_list()
+        try:
+            return self._pool_connect(self._master_aggregator)
+        except PoolConnectionException:
+            return None
 
     def close(self):
         self._pool.close()
@@ -89,6 +98,8 @@ class RandomAggregatorPool(object):
                 if row.Host == '127.0.0.1':
                     # this is the aggregator we are connecting to
                     row['Host'] = conn.connection_info()[0]
+                if int(row.Master_Aggregator) == 1:
+                    self._master_aggregator = (row.Host, row.Port)
                 self._aggregators.append((row.Host, row.Port))
 
         assert len(self._aggregators) > 0, "Failed to retrieve a list of aggregators"

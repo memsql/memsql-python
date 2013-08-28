@@ -5,22 +5,24 @@ except:
 
 from memsql.common.random_aggregator_pool import RandomAggregatorPool
 from memsql.collectd.analytics import AnalyticsCache, AnalyticsRow
+from memsql.collectd import cluster
 from wraptor.decorators import throttle
 
 # This is a data structure shared by every callback. We store all the
 # configuration and globals in it.
 MEMSQL_DATA = dict(
     host=None,
-    port=None,
+    port=3306,
     user='root',
     password='',
     database='dashboard',
     typesdb={},
-    values_cache=AnalyticsCache()
+    values_cache=AnalyticsCache(),
+    node=None
 )
 
 ###################################
-## Initialization/Config functions
+## Lifecycle functions
 
 def memsql_config(config, data):
     """ Handle configuring collectd-memsql. """
@@ -59,6 +61,11 @@ def memsql_init(data):
         database=data['database']
     )
 
+    # if we are part of the cluster, get our node information
+    node = data['node'] = cluster.find_node(data['pool'])
+    if node is not None:
+        collectd.info('I am a MemSQL node: %s:%s' % (node.host, node.port))
+
 def memsql_shutdown(data):
     """ Handles terminating collectd-memsql. """
 
@@ -66,7 +73,43 @@ def memsql_shutdown(data):
     data['pool'].close()
 
 #########################
-## Write/utility functions
+## Read/Write functions
+
+def memsql_write(collectd_sample, data):
+    """ Write handler for collectd.
+    This function is called per sample taken from every plugin.  It is
+    parallelized among multiple threads by collectd.
+    """
+
+    if 'node' in data and data['node'] is not None:
+        throttled_update_alias(data, collectd_sample)
+
+    # get the value types for this sample
+    types = data['typesdb']
+    if collectd_sample.type not in types:
+        collectd.info('memsql_writer: do not know how to handle type %s. do you have all your types.db files configured?' % collectd_sample.type)
+        return
+
+    value_types = types[collectd_sample.type]
+
+    if len(value_types) != len(collectd_sample.values):
+        collectd.info('memsql_writer: differing number of values for type %s' % collectd_sample.type)
+        return
+
+    # for each value in this sample, insert it into the cache
+    for (value_type, value) in zip(value_types, collectd_sample.values):
+        cache_value(value, value_type[0], value_type[1], collectd_sample, data)
+
+    # finally flush the cache
+    throttled_flush(data)
+
+#########################
+## Utility functions
+
+@throttle(60)
+def throttled_update_alias(data, collectd_sample):
+    host = collectd_sample.host.replace('.', '_')
+    data['node'].update_alias(data['pool'], host)
 
 def memsql_parse_types_file(path, data):
     """ This function tries to parse a collectd compliant types.db file.
@@ -101,31 +144,6 @@ def memsql_parse_types_file(path, data):
         types[type_name] = v
 
     f.close()
-
-def memsql_write(collectd_sample, data):
-    """ Write handler for collectd.
-    This function is called per sample taken from every plugin.  It is
-    parallelized among multiple threads by collectd.
-    """
-
-    # get the value types for this sample
-    types = data['typesdb']
-    if collectd_sample.type not in types:
-        collectd.info('memsql_writer: do not know how to handle type %s. do you have all your types.db files configured?' % collectd_sample.type)
-        return
-
-    value_types = types[collectd_sample.type]
-
-    if len(value_types) != len(collectd_sample.values):
-        collectd.info('memsql_writer: differing number of values for type %s' % collectd_sample.type)
-        return
-
-    # for each value in this sample, insert it into the cache
-    for (value_type, value) in zip(value_types, collectd_sample.values):
-        cache_value(value, value_type[0], value_type[1], collectd_sample, data)
-
-    # finally flush the cache
-    throttled_flush(data)
 
 @throttle(1)
 def throttled_flush(data):
