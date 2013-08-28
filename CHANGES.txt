@@ -1,1 +1,7 @@
-v1.0.0, 2013-07-25 -- Initial release.
+2013-08-28 Version 1.2.0
+
+    * Lots of changes, primarily MemSQL Ops v2.2.0+ support
+
+2013-07-25 Version 1.0.0
+
+    * Initial release.
