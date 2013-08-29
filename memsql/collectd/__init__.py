@@ -65,6 +65,7 @@ def memsql_init(data):
     node = data['node'] = cluster.find_node(data['pool'])
     if node is not None:
         collectd.info('I am a MemSQL node: %s:%s' % (node.host, node.port))
+        collectd.register_read(memsql_read, 1, data)
 
 def memsql_shutdown(data):
     """ Handles terminating collectd-memsql. """
@@ -74,6 +75,18 @@ def memsql_shutdown(data):
 
 #########################
 ## Read/Write functions
+
+def memsql_read(data):
+    node = data['node']
+    for name, value in node.status():
+        collectd_value = collectd.Values(
+            plugin='memsql',
+            plugin_instance='status',
+            type='gauge',
+            type_instance=name,
+            values=[value]
+        )
+        collectd_value.dispatch()
 
 def memsql_write(collectd_sample, data):
     """ Write handler for collectd.

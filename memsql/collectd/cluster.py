@@ -1,6 +1,8 @@
 from netifaces import interfaces, ifaddresses, AF_INET
 import socket
 import hashlib
+import re
+from memsql.common.connection_pool import ConnectionPool
 
 def find_node(connection_pool):
     # first get all the node ips and ports
@@ -43,6 +45,7 @@ class Node(object):
         self.host = host
         self.port = port
         self._node_id = hashlib.md5(self.host + str(self.port)).hexdigest()
+        self._pool = ConnectionPool()
 
     def update_alias(self, connection_pool, alias):
         try:
@@ -57,3 +60,30 @@ class Node(object):
         finally:
             if conn:
                 conn.close()
+
+    def connect(self):
+        return self._pool.connect(
+            host=self.host,
+            port=self.port,
+            user="dashboard",
+            password="",
+            database="information_schema")
+
+    def status(self):
+        with self.connect() as conn:
+            rows = conn.query('SHOW STATUS EXTENDED')
+
+        for row in rows:
+            name = row.Variable_name
+            try:
+                value = self._parse_value(row.Value)
+            except ValueError:
+                continue
+            yield (name, value)
+
+    STATUS_CONSTS = re.compile(r"ms|MB|KB", re.I)
+
+    def _parse_value(self, value):
+        if self.STATUS_CONSTS.search(value):
+            return float(value.split(" ")[0])
+        return float(value)
