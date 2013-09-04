@@ -11,6 +11,10 @@ class RandomAggregatorPool(object):
     random aggregator and use it while it is available. If not it fails
     over to another aggregator.  The class maintains the list of
     aggregators by periodically calling `SHOW AGGREGATORS`.
+
+    Note: If you point this class at a MemSQL Singlebox instance, it
+    will still work, but all connections will just be made to the
+    singlebox node.
     """
 
     def __init__(self, host, port, user='root', password='', database='information_schema'):
@@ -40,7 +44,9 @@ class RandomAggregatorPool(object):
 
     def connect_master(self):
         if self._master_aggregator is None:
-            self._update_aggregator_list()
+            with self._pool_connect(self._primary_aggregator) as conn:
+                self._update_aggregator_list(conn)
+                conn.expire()
         try:
             return self._pool_connect(self._master_aggregator)
         except PoolConnectionException:
@@ -91,16 +97,24 @@ class RandomAggregatorPool(object):
                 raise last_exception
 
     def _update_aggregator_list(self, conn):
-        rows = conn.query('SHOW AGGREGATORS')
-        with self._lock:
-            self._aggregators = []
-            for row in rows:
-                if row.Host == '127.0.0.1':
-                    # this is the aggregator we are connecting to
-                    row['Host'] = conn.connection_info()[0]
-                if int(row.Master_Aggregator) == 1:
-                    self._master_aggregator = (row.Host, row.Port)
-                self._aggregators.append((row.Host, row.Port))
+        try:
+            rows = conn.query('SHOW AGGREGATORS')
+        except PoolConnectionException as e:
+            if e.errno == 1736:
+                # connected to memsql singlebox
+                self._aggregators = [self._primary_aggregator]
+                self._master_aggregator = self._primary_aggregator
+        else:
+            with self._lock:
+                self._aggregators = []
+                for row in rows:
+                    if row.Host == '127.0.0.1':
+                        # this is the aggregator we are connecting to
+                        row['Host'] = conn.connection_info()[0]
+                    if int(row.Master_Aggregator) == 1:
+                        self._master_aggregator = (row.Host, row.Port)
+                    self._aggregators.append((row.Host, row.Port))
 
-        assert len(self._aggregators) > 0, "Failed to retrieve a list of aggregators"
+            assert len(self._aggregators) > 0, "Failed to retrieve a list of aggregators"
+
         self.logger.debug('Aggregator list is updated to %s. Current aggregator is %s.' % (self._aggregators, self._aggregator))
