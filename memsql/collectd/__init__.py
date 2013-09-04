@@ -44,9 +44,9 @@ def memsql_config(config, data):
     for child in config.children:
         key = child.key.lower()
         val = child.values[0]
-        if val.lower() in 'yes,true,on'.split(','):
+        if isinstance(val, (str, unicode)) and val.lower() in 'yes,true,on'.split(','):
             val = True
-        elif val.lower() in 'no,false,off'.split(','):
+        elif isinstance(val, (str, unicode)) and val.lower() in 'no,false,off'.split(','):
             val = False
         parsed_config[key] = val
 
@@ -61,7 +61,7 @@ def memsql_init(data):
     """ Handles initializing collectd-memsql. """
 
     # verify we have required params
-    assert len(data.typesdb) > 0, 'At least 1 typesdb file path must be specified'
+    assert len(data.typesdb) > 0, 'At least 1 TypesDB file path must be specified'
     assert data.config.host is not None, 'MemSQL host is not defined'
     assert data.config.port is not None, 'MemSQL port is not defined'
 
