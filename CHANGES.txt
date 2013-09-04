@@ -1,6 +1,9 @@
-2013-08-28 Version 1.2.0
+2013-09-04 Version 1.2.0
 
     * Lots of changes, primarily MemSQL Ops v2.2.0+ support
+    * Auto-detect if the running collectd node is part of a MemSQL
+      distributed cluster.  If so we track show_status and insert it
+      into the analytics table.
 
 2013-07-25 Version 1.0.0
 
