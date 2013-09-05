@@ -216,6 +216,12 @@ def cache_value(new_value, data_source_name, data_source_type, collectd_sample, 
                 new_row.value = (2 ** 32 - old_value + new_value) / time_delta
             else:
                 new_row.value = (2 ** 64 - old_value + new_value) / time_delta
+
+            if collectd_sample.plugin == 'cpu' and collectd_sample.type == 'cpu' and collectd_sample.type_instance == 'wait':
+                # in virtualized environments, iowait sometimes wraps around and then back
+                if new_row.value > (2 ** 31):
+                    new_row.raw_value = previous_row.raw_value
+                    new_row.value = previous_row.value
         else:
             # the default wrap-around formula
             new_row.value = (new_value - old_value) / time_delta
