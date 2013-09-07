@@ -1,3 +1,9 @@
+2013-09-06 Version 2.0.0
+
+    * Renamed database_mysqldb -> database
+    * other minor changes
+    * preparing for open source release
+
 2013-09-04 Version 1.2.0
 
     * Lots of changes, primarily MemSQL Ops v2.2.0+ support
