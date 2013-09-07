@@ -94,7 +94,7 @@ def test_fairy_execute_lastrowid(fairy):
     row_id = fairy.execute_lastrowid('SELECT 1')
     assert isinstance(row_id, long)
 
-@mock.patch('memsql.common.database_mysqldb.Connection')
+@mock.patch('memsql.common.database.Connection')
 def test_socket_issues(mock_class, pool, db_args, test_key):
     from memsql.common.connection_pool import PoolConnectionException
     import errno, socket

@@ -1,6 +1,6 @@
-import _mysql, errno, Queue, logging
+import _mysql, errno, Queue
 import multiprocessing
-from memsql.common import database_mysqldb
+from memsql.common import database
 
 QUEUE_SIZE = 128
 
@@ -16,7 +16,6 @@ class ConnectionPool(object):
     def __init__(self):
         self._connections = {}
         self._fairies = {}
-        self.logger = logging.getLogger('memsql.connection_pool')
 
     def connect(self, host, port, user, password, database):
         current_proc = multiprocessing.current_process()
@@ -114,7 +113,7 @@ class _PoolConnectionFairy(object):
             self._conn = self._pool._connections[self._key].get_nowait()
         except Queue.Empty:
             (host, port, user, password, db_name, pid) = self._key
-            self._conn = self.__wrap_errors(database_mysqldb.connect,
+            self._conn = self.__wrap_errors(database.connect,
                 host=host, port=port, user=user, password=password, database=db_name)
 
     def connected(self):

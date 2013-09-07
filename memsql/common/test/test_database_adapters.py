@@ -1,5 +1,5 @@
 import pytest
-from memsql.common import database_mysqldb
+from memsql.common import database
 
 def test_connection_open(test_db_conn):
     assert test_db_conn.connected()
@@ -25,7 +25,7 @@ def test_query(test_db_conn):
 class TestQueries(object):
     @pytest.fixture(scope="class")
     def x_conn(self, request, test_db_args):
-        conn = database_mysqldb.connect(**test_db_args)
+        conn = database.connect(**test_db_args)
         conn.execute('CREATE DATABASE IF NOT EXISTS memsql_python_test')
         conn.execute('USE memsql_python_test')
 

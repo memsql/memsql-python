@@ -1,5 +1,5 @@
 import pytest
-from memsql.common import database_mysqldb
+from memsql.common import database
 import os
 
 @pytest.fixture(scope="module")
@@ -14,4 +14,4 @@ def test_db_args():
 
 @pytest.fixture
 def test_db_conn(test_db_args):
-    return database_mysqldb.connect(**test_db_args)
+    return database.connect(**test_db_args)

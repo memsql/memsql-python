@@ -37,6 +37,8 @@ class Connection(object):
         self.database = database
         self.max_idle_time = max_idle_time
 
+        self.encoders = dict([ (k, v) for k, v in conversions.items() if not isinstance(k, int) ])
+
         sys_vars = {
             "character_set_server":  "utf8",
             "collation_server":      "utf8_general_ci"
@@ -57,8 +59,7 @@ class Connection(object):
 
         self._db = None
         self._db_args = args
-        self.encoders = dict([ (k, v) for k, v in conversions.items()
-                               if type(k) is not int ])
+
         self._last_use_time = time.time()
         self.reconnect()
         self._db.set_character_set("utf8")
