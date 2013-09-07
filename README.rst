@@ -10,4 +10,4 @@ Our official `collectd` plugin is also included here.
 Testing
 =======
 
-Run tests by executing :code:`python setup.py test`
+Run tests by executing :code:`make test`.

@@ -49,13 +49,16 @@ setup(
     author='MemSQL',
     author_email='support@memsql.com',
     url='http://github.com/memsql/memsql-python',
-
     license='LICENSE.txt',
     description='Useful utilities and plugins for MemSQL integration.',
     long_description=open('README.rst').read(),
-
-    packages=[ 'memsql', 'memsql.collectd', 'memsql.common', ],
+    packages=[
+        'memsql',
+        'memsql.collectd',
+        'memsql.common',
+        'memsql.common.test',
+    ],
     install_requires=['ordereddict', 'MySQL-python>=1.2.4', 'wraptor', 'netifaces'],
-    tests_require=['pytest', 'mock'],
+    tests_require=['pytest', 'mock', 'pytest-xdist'],
     cmdclass={ 'test': PyTest },
 )
