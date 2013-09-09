@@ -1,3 +1,8 @@
+2013-09-09 Version 2.1.0
+
+    * OperationalErrors are only raised when an actual connection issue has occurred.
+        * All other non-fatal issues are raised as DatabaseErrors
+
 2013-09-06 Version 2.0.0
 
     * Renamed database_mysqldb -> database
