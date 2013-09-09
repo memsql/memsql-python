@@ -96,26 +96,18 @@ class Connection(object):
             self._db = conn
 
     def debug_query(self, query, *parameters):
-        print query % tuple(["'%s'" % p for p in parameters])
-        return self.query(query, *parameters)
+        return self._query(query, parameters, debug=True)
 
     def query(self, query, *parameters):
         """
         Query the connection and return the rows (or affected rows if not a
         select query).  Mysql errors will be propogated as exceptions.
         """
-        self._execute(query, *parameters)
-        self._result = self._db.use_result()
-        if self._result is None:
-            return self._rowcount
-        fields = zip(*self._result.describe())[0]
-        rows = list(self._result.fetch_row(0))
-        ret = SelectResult(fields, rows)
-        return ret
+        return self._query(query, parameters)
 
     def get(self, query, *parameters):
         """Returns the first row returned for the given query."""
-        rows = self.query(query, *parameters)
+        rows = self._query(query, parameters)
         if not rows:
             return None
         elif not isinstance(rows, list):
@@ -133,7 +125,7 @@ class Connection(object):
 
     def execute_lastrowid(self, query, *parameters):
         """Executes the given query, returning the lastrowid from the query."""
-        self._execute(query, *parameters)
+        self._execute(query, parameters)
         self._result = self._db.store_result()
         return self._db.insert_id()
 
@@ -147,7 +139,17 @@ class Connection(object):
             self.reconnect()
         self._last_use_time = time.time()
 
-    def _execute(self, query, *parameters):
+    def _query(self, query, parameters, debug=False):
+        self._execute(query, parameters, debug)
+        self._result = self._db.use_result()
+        if self._result is None:
+            return self._rowcount
+        fields = zip(*self._result.describe())[0]
+        rows = list(self._result.fetch_row(0))
+        ret = SelectResult(fields, rows)
+        return ret
+
+    def _execute(self, query, parameters, debug=False):
         if parameters is not None and parameters != ():
             params = []
             for param in parameters:
@@ -160,6 +162,9 @@ class Connection(object):
 
         if isinstance(query, unicode):
             query = query.encode(self._db.character_set_name())
+
+        if debug:
+            print query
 
         self._db.query(query)
         self._rowcount = self._db.affected_rows()

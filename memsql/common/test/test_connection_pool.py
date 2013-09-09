@@ -119,3 +119,28 @@ def test_sql_errors(fairy):
     from _mysql import ProgrammingError
     with pytest.raises(ProgrammingError):
         fairy.query('asdf bad query!!')
+
+def test_exception_remapping(pool, db_args):
+    from memsql.common.connection_pool import PoolConnectionException
+    from memsql.common import errorcodes
+    import _mysql
+
+    # check that some operationalerrors get mapped to PoolConnectionException
+    bad_db_args = db_args[:-1] + ("aasjdkfjdoes_not_exist",)
+    fairy = None
+    with pytest.raises(PoolConnectionException):
+        fairy = pool.connect(*bad_db_args)
+    assert fairy is None
+
+    # other programmer errors should not be mapped
+    fairy = pool.connect(*db_args)
+    fairy.query('CREATE DATABASE IF NOT EXISTS memsql_python_test')
+    fairy.query('USE memsql_python_test')
+    fairy.query('CREATE TABLE IF NOT EXISTS x (id BIGINT PRIMARY KEY)')
+
+    with pytest.raises(_mysql.DatabaseError) as exc:
+        fairy.query('SELECT bad_key FROM x')
+
+    assert not fairy._expired
+    e = exc.value
+    assert e.args == (errorcodes.ER_BAD_FIELD_ERROR, "Unknown column 'bad_key' in 'field list'")

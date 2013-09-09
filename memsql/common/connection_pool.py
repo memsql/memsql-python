@@ -85,24 +85,45 @@ class _PoolConnectionFairy(object):
         except IOError as e:
             if e.errno in [errno.ECONNRESET, errno.ECONNREFUSED, errno.ETIMEDOUT]:
                 # socket connection issues
-                self.__handle_connection_failure(e, *args, **kwargs)
+                self.__handle_connection_failure(e)
             else:
                 raise
         except _mysql.OperationalError as e:
             # _mysql specific database connect issues, internal state issues
-            self.__handle_connection_failure(e, *args, **kwargs)
+            if hasattr(self, '_conn'):
+                self.__potential_connection_failure(e)
+            else:
+                self.__handle_connection_failure(e)
 
-    def __handle_connection_failure(self, e, *args, **kwargs):
+    def __potential_connection_failure(self, e):
+        """ OperationalError's are emitted by the _mysql library for
+        almost every error code emitted by MySQL.  Because of this we
+        verify that the error is actually a connection error before
+        terminating the connection and firing off a PoolConnectionException
+        """
+        try:
+            self._conn.query('SELECT 1')
+        except (IOError, _mysql.OperationalError):
+            # ok, it's actually an issue.
+            self.__handle_connection_failure(e)
+        else:
+            # seems ok, probably programmer error
+            raise _mysql.DatabaseError(*e.args)
+
+    def __handle_connection_failure(self, e):
         # expire the connection so we don't return it to the pool accidentally
         self.expire()
 
         # build and raise the new consolidated exception
-        err_num = errno.ECONNABORTED
-        if hasattr(e, 'errno'):
-            err_num = e.errno
         message = e.message
-        if hasattr(e, 'args') and len(e.args) >= 2:
+        if isinstance(e, _mysql.OperationalError) or (hasattr(e, 'args') and len(e.args) >= 2):
+            err_num = e.args[0]
             message = e.args[1]
+        elif hasattr(e, 'errno'):
+            err_num = e.errno
+        else:
+            err_num = errno.ECONNABORTED
+
         raise PoolConnectionException(err_num, message, self._key)
 
     ##################
