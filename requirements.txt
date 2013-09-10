@@ -1,0 +1,4 @@
+ordereddict
+MySQL-python>=1.2.4
+wraptor
+netifaces
