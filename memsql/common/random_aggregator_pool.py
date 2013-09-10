@@ -1,4 +1,5 @@
 from memsql.common.connection_pool import ConnectionPool, PoolConnectionException
+from memsql.common import errorcodes
 from wraptor.decorators import memoize
 import threading
 import random
@@ -100,7 +101,7 @@ class RandomAggregatorPool(object):
         try:
             rows = conn.query('SHOW AGGREGATORS')
         except PoolConnectionException as e:
-            if e.errno == 1736:
+            if e.errno == errorcodes.ER_DISTRIBUTED_NOT_AGGREGATOR:
                 # connected to memsql singlebox
                 self._aggregators = [self._primary_aggregator]
                 self._master_aggregator = self._primary_aggregator
