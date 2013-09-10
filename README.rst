@@ -7,6 +7,13 @@ engineers for a couple of important python libraries.
 
 Our official `collectd` plugin is also included here.
 
+Install
+=======
+
+.. code:: bash
+
+    pip install memsql
+
 Testing
 =======
 
