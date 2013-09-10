@@ -10,4 +10,7 @@ Our official `collectd` plugin is also included here.
 Testing
 =======
 
+.. image:: https://travis-ci.org/memsql/memsql-python.png
+    :target: https://travis-ci.org/memsql/memsql-python
+
 Run tests by executing :code:`make test`.
