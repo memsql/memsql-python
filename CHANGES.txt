@@ -1,3 +1,7 @@
+2013-09-11 Version 2.1.1
+
+    * Minor change to how analytics data is stored in MemSQL Ops
+
 2013-09-09 Version 2.1.0
 
     * OperationalErrors are only raised when an actual connection issue has occurred.
