@@ -21,7 +21,7 @@ class AnalyticsRow(object):
             value = self._parse_val(value)
             if value:
                 classifier.append(value)
-        [classifier.append("NULL") for i in range(len(CLASSIFIERS) - len(classifier))]
+        [classifier.append('') for i in range(len(CLASSIFIERS) - len(classifier))]
         self.classifier = tuple(classifier)
 
     def _parse_val(self, value):
@@ -36,7 +36,7 @@ class AnalyticsRow(object):
 
     def values(self):
         """ Returns the entire row as a tuple (classifier with created and value). """
-        joined_classifier = '.'.join([x for x in self.classifier if x != 'NULL'])
+        joined_classifier = '.'.join([x for x in self.classifier if x is not ''])
         return self.classifier + (self.iso_timestamp, self.value, joined_classifier)
 
 class AnalyticsCache(object):
