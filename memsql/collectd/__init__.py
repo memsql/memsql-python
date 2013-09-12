@@ -97,6 +97,16 @@ def memsql_read(data):
             )
             collectd_value.dispatch()
 
+            if name in cluster.COUNTER_STATUS_VARIABLES:
+                collectd_value = collectd.Values(
+                    plugin='memsql',
+                    plugin_instance='status',
+                    type='counter',
+                    type_instance=name,
+                    values=[value]
+                )
+                collectd_value.dispatch()
+
 def memsql_write(collectd_sample, data):
     """ Write handler for collectd.
     This function is called per sample taken from every plugin.  It is

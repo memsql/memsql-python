@@ -2,6 +2,18 @@ from netifaces import interfaces, ifaddresses, AF_INET
 import re
 from memsql.common.connection_pool import ConnectionPool
 
+# Status variables specified in the following array will be sent to
+# collectd as COUNTERS as well as GAUGES.
+# This will cause them to be stored as both an absolute value and a
+# derivative.
+COUNTER_STATUS_VARIABLES = [
+    "Rows_affected_by_writes",
+    "Rows_returned_by_reads",
+    "Successful_write_queries",
+    "Successful_read_queries"
+]
+
+
 def find_node(connection_pool):
     addresses = ','.join(["'%s'" % address for address in _addresses_iter()])
     with connection_pool.connect() as conn:
