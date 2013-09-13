@@ -1,6 +1,7 @@
 from netifaces import interfaces, ifaddresses, AF_INET
 import re
 from memsql.common.connection_pool import ConnectionPool
+from wraptor.decorators import memoize
 
 # Status variables specified in the following array will be sent to
 # collectd as COUNTERS as well as GAUGES.
@@ -12,7 +13,6 @@ COUNTER_STATUS_VARIABLES = [
     "Successful_write_queries",
     "Successful_read_queries"
 ]
-
 
 def find_node(connection_pool):
     addresses = ','.join(["'%s'" % address for address in _addresses_iter()])
@@ -64,6 +64,14 @@ class Node(object):
             user="dashboard",
             password="",
             database="information_schema")
+
+    @memoize(instance_method=True, timeout=3600)
+    def data_directory(self):
+        with self.connect() as conn:
+            row = conn.get('SHOW STATUS EXTENDED LIKE "Data_directory"')
+
+        if row and row.Value:
+            return row.Value
 
     def status(self):
         with self.connect() as conn:

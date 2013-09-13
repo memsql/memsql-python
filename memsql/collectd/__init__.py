@@ -7,6 +7,7 @@ from memsql.common.random_aggregator_pool import RandomAggregatorPool
 from memsql.collectd.analytics import AnalyticsCache, AnalyticsRow
 from memsql.collectd import cluster
 from wraptor.decorators import throttle
+import os
 
 # This is a data structure shared by every callback. We store all the
 # configuration and globals in it.
@@ -87,25 +88,21 @@ def memsql_shutdown(data):
 
 def memsql_read(data):
     if data.node is not None:
+        # send memsql status first
+        memsql_status = collectd.Values(plugin="memsql", plugin_instance="status", type="gauge")
         for name, value in data.node.status():
-            collectd_value = collectd.Values(
-                plugin='memsql',
-                plugin_instance='status',
-                type='gauge',
-                type_instance=name,
-                values=[value]
-            )
-            collectd_value.dispatch()
+            memsql_status.dispatch(type_instance=name, values=[value])
 
             if name in cluster.COUNTER_STATUS_VARIABLES:
-                collectd_value = collectd.Values(
-                    plugin='memsql',
-                    plugin_instance='status',
-                    type='counter',
-                    type_instance=name,
-                    values=[value]
-                )
-                collectd_value.dispatch()
+                memsql_status.dispatch(type="counter", type_instance=name, values=[value])
+
+        # calculate and submit disk space info
+        data_path = data.node.data_directory()
+        if data_path:
+            diskinfo = get_path_diskinfo(data_path)
+            memsql_disk = collectd.Values(plugin="memsql", plugin_instance="disk", type="gauge")
+            for name, value in diskinfo.items():
+                memsql_disk.dispatch(type_instance=name, values=[value])
 
 def memsql_write(collectd_sample, data):
     """ Write handler for collectd.
@@ -241,6 +238,16 @@ def cache_value(new_value, data_source_name, data_source_type, collectd_sample, 
 
     else:
         collectd.debug("MemSQL collectd. Undefined data source %s" % data_source_type)
+
+def get_path_diskinfo(path):
+    """ Calculates diskinfo for the drive containing the given path """
+    st = os.statvfs(path)
+    return {
+        #       (total blocks - free blocks) * block_size
+        "used": (st.f_blocks - st.f_bfree) * st.f_frsize,
+        #       avail blocks * block size
+        "free": st.f_bavail * st.f_frsize
+    }
 
 ######################
 ## Register callbacks
