@@ -1,3 +1,8 @@
+2013-09-16 Version 2.3.0
+
+    * Send disk space usage from our plugin for memsql nodes.  We do
+      this for only the disk that is used by the data directory.
+
 2013-09-12 Version 2.2.0
 
     * Send certain MemSQL stats to the cluster as COUNTER types
