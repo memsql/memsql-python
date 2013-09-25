@@ -1,5 +1,6 @@
 from datetime import datetime
 import threading
+import math
 
 CLASSIFIERS = [ "alpha", "beta", "gamma", "delta", "epsilon", "zeta" ]
 ANALYTICS_COLUMNS = CLASSIFIERS + [ "created", "value", "classifier" ]
@@ -39,6 +40,10 @@ class AnalyticsRow(object):
         joined_classifier = '.'.join([x for x in self.classifier if x is not ''])
         return self.classifier + (self.iso_timestamp, self.value, joined_classifier)
 
+    def valid(self):
+        """ Validates that the value of this row is a valid value (ie. not None and not NaN) """
+        return not (self.value is None or math.isnan(self.value))
+
 class AnalyticsCache(object):
     """ A thread safe cache for analytics rows.  Can efficiently flush
     all values in the cache using a multi-insert.
@@ -71,7 +76,8 @@ class AnalyticsCache(object):
         while len(flushing):
             batch, flushing = flushing[:50], flushing[50:]
 
-            query_params = sum([row.values() for row in batch], ())
-            values = ','.join(value_template * len(batch))
+            row_values = [row.values() for row in batch if row.valid()]
+            query_params = sum(row_values, ())
+            values = ','.join(value_template * len(row_values))
 
             conn.execute("INSERT INTO analytics (%s) VALUES %s" % (columns, values), *query_params)

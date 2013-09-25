@@ -1,3 +1,7 @@
+2013-09-25 Version 2.3.1
+
+    * Minor bug fix - NaN values are no longer sent to MemSQL
+
 2013-09-16 Version 2.3.0
 
     * Send disk space usage from our plugin for memsql nodes.  We do
