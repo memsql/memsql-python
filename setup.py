@@ -61,7 +61,6 @@ setup(
         'memsql',
         'memsql.collectd',
         'memsql.common',
-        'memsql.common.test',
     ],
     zip_safe=False,
     install_requires=['ordereddict', 'MySQL-python>=1.2.4', 'wraptor', 'netifaces'],
