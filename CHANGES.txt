@@ -1,3 +1,7 @@
+2013-09-26 Version 2.3.2
+
+    * Removed test package from setup.py
+
 2013-09-25 Version 2.3.1
 
     * Minor bug fix - NaN values are no longer sent to MemSQL
