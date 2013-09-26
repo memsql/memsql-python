@@ -103,6 +103,8 @@ def memsql_read(data):
             memsql_disk = collectd.Values(plugin="memsql", plugin_instance="disk", type="gauge")
             for name, value in diskinfo.items():
                 memsql_disk.dispatch(type_instance=name, values=[value])
+    elif data.config.memsqlnode or data.config.memsqlnode is None:
+        throttled_find_node(data)
 
 def memsql_write(collectd_sample, data):
     """ Write handler for collectd.
@@ -112,8 +114,6 @@ def memsql_write(collectd_sample, data):
 
     if data.node is not None:
         throttled_update_alias(data, collectd_sample)
-    elif data.config.memsqlnode or data.config.memsqlnode is None:
-        throttled_find_node(data)
 
     # get the value types for this sample
     types = data.typesdb

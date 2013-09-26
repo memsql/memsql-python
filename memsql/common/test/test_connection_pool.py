@@ -144,3 +144,16 @@ def test_exception_remapping(pool, db_args):
     assert not fairy._expired
     e = exc.value
     assert e.args == (errorcodes.ER_BAD_FIELD_ERROR, "Unknown column 'bad_key' in 'field list'")
+
+def test_size(pool, test_key, db_args):
+    assert pool.size() == 0
+
+    fairy = pool.connect(*db_args)
+    fairy.close()
+
+    assert pool.size() == 1
+
+    fairy = pool.connect(*db_args)
+    fairy2 = pool.connect(*db_args)
+
+    assert pool.size() == 2

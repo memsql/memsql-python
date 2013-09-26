@@ -1,6 +1,8 @@
 from datetime import datetime
 import threading
 import math
+from wraptor.decorators import throttle
+import calendar
 
 CLASSIFIERS = [ "alpha", "beta", "gamma", "delta", "epsilon", "zeta" ]
 ANALYTICS_COLUMNS = CLASSIFIERS + [ "created", "value", "classifier" ]
@@ -66,6 +68,9 @@ class AnalyticsCache(object):
     def flush(self, conn):
         """ Generates a multi-insert statement and executes it against the analytics table. """
 
+        # throttled garbage collect
+        self.garbage_collectd_pending()
+
         # grab all the rows that need to be flushed
         with self._lock:
             flushing = [r for r in self._pending if hasattr(r, 'value')]
@@ -81,3 +86,11 @@ class AnalyticsCache(object):
             values = ','.join(value_template * len(row_values))
 
             conn.execute("INSERT INTO analytics (%s) VALUES %s" % (columns, values), *query_params)
+
+    @throttle(60)
+    def garbage_collectd_pending(self):
+        """ Check the pending array for any old rows, and then delete them """
+
+        now = calendar.timegm(datetime.now().utctimetuple())
+        with self._lock:
+            self._pending = [r for r in self._pending if r.created > (now - 360)]

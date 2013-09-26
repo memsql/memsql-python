@@ -58,6 +58,10 @@ class ConnectionPool(object):
                 except Queue.Empty:
                     break
 
+    def size(self):
+        """ Returns the number of connections cached by the pool. """
+        return sum([q.qsize() for q in self._connections.values()]) + len(self._fairies)
+
 class _PoolConnectionFairy(object):
     def __init__(self, key, pool):
         self._key = key
