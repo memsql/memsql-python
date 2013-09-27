@@ -1,3 +1,7 @@
+2013-09-26 Version 2.3.3
+
+    * Implemented garbage collection for very old pending analytical rows
+
 2013-09-26 Version 2.3.2
 
     * Removed test package from setup.py
