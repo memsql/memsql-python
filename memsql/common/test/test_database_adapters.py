@@ -24,13 +24,13 @@ def test_query(test_db_conn):
 
 class TestQueries(object):
     @pytest.fixture(scope="class")
-    def x_conn(self, request, test_db_args):
+    def x_conn(self, request, test_db_args, test_db_database):
         conn = database.connect(**test_db_args)
-        conn.execute('CREATE DATABASE IF NOT EXISTS memsql_python_test')
-        conn.execute('USE memsql_python_test')
+        conn.execute('CREATE DATABASE IF NOT EXISTS %s' % test_db_database)
+        conn.execute('USE %s' % test_db_database)
 
         def cleanup():
-            conn.execute('DROP DATABASE memsql_python_test')
+            conn.execute('DROP DATABASE %s' % test_db_database)
         request.addfinalizer(cleanup)
 
         return conn
@@ -62,7 +62,7 @@ class TestQueries(object):
     def test_select(self, x_conn):
         x_conn.execute('INSERT INTO x (value) VALUES (1), (2), (3)')
 
-        all_rows = x_conn.query('SELECT * FROM x')
+        all_rows = x_conn.query('SELECT * FROM x ORDER BY value ASC')
         assert len(all_rows) == 3
         assert all_rows[1].value == 2
 

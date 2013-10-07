@@ -120,7 +120,7 @@ def test_sql_errors(fairy):
     with pytest.raises(ProgrammingError):
         fairy.query('asdf bad query!!')
 
-def test_exception_remapping(pool, db_args):
+def test_exception_remapping(pool, db_args, test_db_database):
     from memsql.common.connection_pool import PoolConnectionException
     from memsql.common import errorcodes
     import _mysql
@@ -134,8 +134,8 @@ def test_exception_remapping(pool, db_args):
 
     # other programmer errors should not be mapped
     fairy = pool.connect(*db_args)
-    fairy.query('CREATE DATABASE IF NOT EXISTS memsql_python_test')
-    fairy.query('USE memsql_python_test')
+    fairy.query('CREATE DATABASE IF NOT EXISTS %s' % test_db_database)
+    fairy.query('USE %s' % test_db_database)
     fairy.query('CREATE TABLE IF NOT EXISTS x (id BIGINT PRIMARY KEY)')
 
     with pytest.raises(_mysql.DatabaseError) as exc:

@@ -63,7 +63,7 @@ setup(
         'memsql.common',
     ],
     zip_safe=False,
-    install_requires=['ordereddict', 'MySQL-python>=1.2.4', 'wraptor', 'netifaces'],
+    install_requires=['ordereddict', 'MySQL-python>=1.2.4', 'wraptor', 'netifaces', 'simplejson'],
     tests_require=['pytest', 'mock', 'pytest-xdist'],
     cmdclass={ 'test': PyTest },
 )

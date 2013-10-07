@@ -1,6 +1,8 @@
 import _mysql, errno, Queue
 import multiprocessing
+import logging
 from memsql.common import database
+from memsql.common.database import MySQLError
 
 QUEUE_SIZE = 128
 
@@ -14,6 +16,7 @@ class PoolConnectionException(IOError):
 
 class ConnectionPool(object):
     def __init__(self):
+        self.logger = logging.getLogger('memsql.connection_pool')
         self._connections = {}
         self._fairies = {}
 
