@@ -24,6 +24,7 @@ def find_node(connection_pool):
             ORDER BY host, port LIMIT 1
         ''' % addresses)
 
+    node = None
     if node_row is not None:
         node = Node(node_row)
 
