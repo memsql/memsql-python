@@ -1,3 +1,11 @@
+2013-10-07 Version 2.4.0
+
+    * Added a useful class called SQLStepQueue
+        * Requires MemSQL 2.5 to work due to using JSON under the hood.
+        * Fully atomic queue, that is designed to also store data forever
+        * Each enqueued item can be started, multiple steps can be executed on it, and then it can be stoped
+        * Timing information for each step is stored on the item's execution row
+
 2013-10-07 Version 2.3.4
 
     * Fixed a minor exception that was raised when a node isn't a MemSQL node
