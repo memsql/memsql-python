@@ -6,7 +6,7 @@ from memsql.common import sql_step_queue
 from memsql.common import database
 
 memsql_required = pytest.mark.skipif(
-    os.environ.get('TRAVIS') == 'true',
+    "os.environ.get('TRAVIS') == 'true'",
     reason="requires MemSQL connection"
 )
 
