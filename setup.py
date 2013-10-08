@@ -39,6 +39,8 @@ class PyTest(TestCommand):
         sys.path.append(MY_PATH)
         os.environ['PYTHONPATH'] = os.environ.get('PYTHONPATH', '') + ':' + MY_PATH
 
+        self.test_args += ['--pyargs', 'memsql']
+
         import pytest
         errno = pytest.main(self.test_args)
         raise sys.exit(errno)
