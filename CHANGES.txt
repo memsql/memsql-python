@@ -1,3 +1,10 @@
+2013-10-10 Version 2.5.0
+
+    * The MemSQL collect plugin now flushes data using a thread
+        * this helps stabalize insert timing
+        * keeps collectd from falling behind by 40ms+ during a flush
+    * Don't send diskinfo from the collectd plugin, the df plugin is now required for Ops
+
 2013-10-07 Version 2.4.0
 
     * Added a useful class called SQLStepQueue
