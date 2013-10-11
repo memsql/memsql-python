@@ -7,6 +7,9 @@ from memsql.common.random_aggregator_pool import RandomAggregatorPool
 from memsql.collectd.analytics import AnalyticsCache, AnalyticsRow
 from memsql.collectd import cluster
 from wraptor.decorators import throttle
+import threading
+import time
+import math
 
 # This is a data structure shared by every callback. We store all the
 # configuration and globals in it.
@@ -76,11 +79,18 @@ def memsql_init(data):
         database=data.config.database
     )
 
+    # initialize the flushing thread
+    data.flusher = FlushWorker(data)
+    data.flusher.start()
+
 def memsql_shutdown(data):
     """ Handles terminating collectd-memsql. """
-
     collectd.info('Terminating collectd-memsql')
+
     data.pool.close()
+
+    data.flusher.terminate()
+    data.flusher.join()
 
 #########################
 ## Read/Write functions
@@ -123,8 +133,30 @@ def memsql_write(collectd_sample, data):
     for (value_type, value) in zip(value_types, collectd_sample.values):
         cache_value(value, value_type[0], value_type[1], collectd_sample, data)
 
-    # finally flush the cache
-    throttled_flush(data)
+#########################
+## Flushing thread
+
+class FlushWorker(threading.Thread):
+    def __init__(self, data):
+        super(FlushWorker, self).__init__()
+        self.data = data
+        self._stop = threading.Event()
+
+    def run(self):
+        while not self._stop.isSet():
+            start = time.time()
+            try:
+                with self.data.pool.connect() as conn:
+                    self.data.values_cache.flush(conn)
+            except Exception as e:
+                collectd.error(str(e))
+
+            # sleep up till the start of the next second
+            sleep_time = math.floor(start+1) - start
+            time.sleep(sleep_time)
+
+    def terminate(self):
+        self._stop.set()
 
 #########################
 ## Utility functions
@@ -173,11 +205,6 @@ def memsql_parse_types_file(path, data):
         types[type_name] = v
 
     f.close()
-
-@throttle(1)
-def throttled_flush(data):
-    with data.pool.connect() as conn:
-        data.values_cache.flush(conn)
 
 def cache_value(new_value, data_source_name, data_source_type, collectd_sample, data):
     """ Cache a new value into the analytics cache.  Handles converting

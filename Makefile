@@ -1,4 +1,4 @@
-all: clean
+all:
 	rm -rf build/ dist; ./setup.py sdist
 
 upload: all
@@ -7,7 +7,7 @@ upload: all
 clean:
 	rm -rf *.egg memsql.egg-info dist build
 	find . -type f -name "*.pyc" -exec rm {} \;
-	find . -name "__pycache__" -print0 | xargs -0 rmdir
+	find . -name "__pycache__" -print0 | xargs -r -0 rmdir
 	python setup.py clean --all
 
 test:
