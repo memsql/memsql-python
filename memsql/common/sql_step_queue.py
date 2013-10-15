@@ -1,4 +1,4 @@
-from memsql.common.connection_pool import ConnectionPool, MySQLError, PoolConnectionException
+from memsql.common.connection_pool import ConnectionPool, MySQLError
 from memsql.common import json, errorcodes
 import time
 from datetime import datetime
@@ -28,6 +28,9 @@ CREATE TABLE IF NOT EXISTS %(prefix)s_executions (
     INDEX (last_contact)
 )"""
 
+class NotConnected(Exception):
+    pass
+
 class StepAlreadyStarted(Exception):
     pass
 
@@ -55,6 +58,7 @@ class SQLStepQueue(object):
         self.tasks_table = self.table_prefix + '_tasks'
         self.executions_table = self.table_prefix + '_executions'
 
+        self._db_args = None
         self._pool = ConnectionPool()
 
     ###############################
@@ -127,6 +131,8 @@ class SQLStepQueue(object):
     # Private Interface
 
     def _db_conn(self):
+        if self._db_args is None:
+            raise NotConnected()
         return self._pool.connect(**self._db_args)
 
     def _query_queued(self, projection):

@@ -1,5 +1,4 @@
 import pytest
-import os
 import time
 import threading
 from memsql.common import sql_step_queue
@@ -34,18 +33,35 @@ def queue(queue_setup, test_db_args, test_db_database):
     return q
 
 @memsql_required
+def test_ensure_connected():
+    q = sql_step_queue.SQLStepQueue('bad_queue')
+
+    with pytest.raises(sql_step_queue.NotConnected):
+        q.setup()
+    with pytest.raises(sql_step_queue.NotConnected):
+        q.destroy()
+    with pytest.raises(sql_step_queue.NotConnected):
+        q.ready()
+    with pytest.raises(sql_step_queue.NotConnected):
+        q.qsize()
+    with pytest.raises(sql_step_queue.NotConnected):
+        q.enqueue({})
+    with pytest.raises(sql_step_queue.NotConnected):
+        q.start()
+
+@memsql_required
 def test_basic(queue):
     assert queue.ready()
     assert queue.qsize() == 0
 
 @memsql_required
 def test_start_none(queue):
-    assert queue.start() == None
+    assert queue.start() is None
 
 @memsql_required
 def test_start_timeout(queue):
     handler = queue.start(block=True, timeout=0.1)
-    assert handler == None
+    assert handler is None
 
 @memsql_required
 def test_start_block(queue):
@@ -121,8 +137,8 @@ def test_handler_basic_2(queue):
 def test_no_steal(queue):
     queue.enqueue({})
     assert queue.qsize() == 1
-    handler = queue.start()
-    assert queue.start() == None
+    queue.start()
+    assert queue.start() is None
 
 @memsql_required
 def test_auto_requeue(queue):
