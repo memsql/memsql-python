@@ -33,16 +33,17 @@ class PyTest(TestCommand):
             self.test_args.append(self.scan_directory)
 
     def run_tests(self):
-        import os, sys
+        import os, sys, glob
 
         MY_PATH = os.path.dirname(__file__)
         sys.path.append(MY_PATH)
         os.environ['PYTHONPATH'] = os.environ.get('PYTHONPATH', '') + ':' + MY_PATH
 
-        self.test_args += ['--pyargs', 'memsql']
+        egg_dirs = glob.glob('*.egg')
+        ignore_args = ['--ignore=%s' % d for d in egg_dirs]
 
         import pytest
-        errno = pytest.main(self.test_args)
+        errno = pytest.main(ignore_args + self.test_args)
         raise sys.exit(errno)
 
 setup(
@@ -63,6 +64,7 @@ setup(
         'memsql',
         'memsql.collectd',
         'memsql.common',
+        'memsql.perf',
     ],
     zip_safe=False,
     install_requires=['ordereddict', 'MySQL-python>=1.2.4', 'wraptor', 'netifaces', 'simplejson'],

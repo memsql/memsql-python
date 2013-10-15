@@ -38,11 +38,14 @@ def _addresses_iter():
 
 class Node(object):
     def __init__(self, node_row):
-        self.id = node_row.id
-        self.host = node_row.host
-        self.port = node_row.port
+        self.update_from_node(node_row)
         self.alias = None
         self._pool = ConnectionPool()
+
+    def update_from_node(self, node):
+        self.id = node.id
+        self.host = node.host
+        self.port = node.port
 
     def update_alias(self, connection_pool, alias):
         self.alias = alias

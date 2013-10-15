@@ -834,3 +834,9 @@ ER_MEMSQL_INVALID_LEAF_SIGNAL = 1827
 ER_WRONG_KEY_COLUMN_JSON = 1828
 ER_UNSUPPORTED_AUTH_PLUGIN = 1829
 ER_ERROR_LAST = 1829
+
+def lookup_by_number(errno):
+    """ Used for development only """
+    for key, val in globals().items():
+        if errno == val:
+            print key

@@ -12,6 +12,7 @@ except:
 from MySQLdb.converters import conversions
 
 MySQLError = _mysql.MySQLError
+OperationalError = _mysql.OperationalError
 
 def connect(*args, **kwargs):
     return Connection(*args, **kwargs)
@@ -82,7 +83,7 @@ class Connection(object):
     def connected(self):
         if self._db is not None:
             try:
-                self._db.ping()
+                self.ping()
                 return True
             except _mysql.InterfaceError:
                 return False
@@ -94,6 +95,10 @@ class Connection(object):
         if conn is not None:
             self.close()
             self._db = conn
+
+    def ping(self):
+        """ Ping the server """
+        return self._db.ping()
 
     def debug_query(self, query, *parameters):
         return self._query(query, parameters, debug=True)

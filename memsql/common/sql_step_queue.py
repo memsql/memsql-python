@@ -1,5 +1,5 @@
-from memsql.common.connection_pool import ConnectionPool, MySQLError
-from memsql.common import json, errorcodes
+from memsql.common.connection_pool import MySQLError
+from memsql.common import json, errorcodes, sql_utility
 import time
 from datetime import datetime
 from contextlib import contextmanager
@@ -28,9 +28,6 @@ CREATE TABLE IF NOT EXISTS %(prefix)s_executions (
     INDEX (last_contact)
 )"""
 
-class NotConnected(Exception):
-    pass
-
 class StepAlreadyStarted(Exception):
     pass
 
@@ -46,53 +43,25 @@ class AlreadyFinished(Exception):
 class StepRunning(Exception):
     pass
 
-class SQLStepQueue(object):
+class SQLStepQueue(sql_utility.SQLUtility):
     def __init__(self, table_prefix="", execution_ttl=60 * 5):
         """
         Initialize the SQLStepQueue with the specified table prefix and
         execution TTL (in seconds).
         """
+        super(SQLStepQueue, self).__init__()
+
         self.execution_ttl = execution_ttl
 
         self.table_prefix = table_prefix.rstrip('_') + '_stepqueue'
         self.tasks_table = self.table_prefix + '_tasks'
         self.executions_table = self.table_prefix + '_executions'
 
-        self._db_args = None
-        self._pool = ConnectionPool()
+        self._define_table(self.tasks_table, PRIMARY_TABLE % { 'prefix': self.table_prefix })
+        self._define_table(self.executions_table, EXECUTION_TABLE % { 'prefix': self.table_prefix })
 
     ###############################
     # Public Interface
-
-    def connect(self, host, port, user, password, database):
-        """ Connect to the database specified """
-        self._db_args = { 'host': host, 'port': port, 'user': user, 'password': password, 'database': database }
-        with self._db_conn() as conn:
-            conn.query('SELECT 1')
-        return self
-
-    def setup(self):
-        """ Initialize the required tables in the database """
-        with self._db_conn() as conn:
-            conn.execute(PRIMARY_TABLE % { 'prefix': self.table_prefix })
-            conn.execute(EXECUTION_TABLE % { 'prefix': self.table_prefix })
-        return self
-
-    def destroy(self):
-        """ Destroy the SQLStepQueue tables in the database """
-        with self._db_conn() as conn:
-            for table_name in [self.tasks_table, self.executions_table]:
-                conn.execute('DROP TABLE IF EXISTS %s' % table_name)
-        return self
-
-    def ready(self):
-        """ Returns True if the tables have been setup, False otherwise """
-        with self._db_conn() as conn:
-            tables = [row.t for row in conn.query('''
-                SELECT table_name AS t FROM information_schema.tables
-                WHERE table_schema=%s
-            ''', self._db_args['database'])]
-        return self.tasks_table in tables and self.executions_table in tables
 
     def qsize(self):
         """ Return an approximate number of queued tasks in the queue. """
@@ -129,11 +98,6 @@ class SQLStepQueue(object):
 
     ###############################
     # Private Interface
-
-    def _db_conn(self):
-        if self._db_args is None:
-            raise NotConnected()
-        return self._pool.connect(**self._db_args)
 
     def _query_queued(self, projection):
         with self._db_conn() as conn:

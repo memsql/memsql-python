@@ -164,3 +164,6 @@ class _PoolConnectionFairy(object):
 
     def execute_lastrowid(self, query, *parameters):
         return self.__wrap_errors(self._conn.execute_lastrowid, query, *parameters)
+
+    def ping(self):
+        return self.__wrap_errors(self._conn.ping)

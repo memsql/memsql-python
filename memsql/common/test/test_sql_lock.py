@@ -1,8 +1,9 @@
 import pytest
 import time
 import threading
-from memsql.common import sql_lock
 from memsql.common import database
+from memsql.common import sql_lock
+from memsql.common import exceptions
 
 @pytest.fixture(scope="module")
 def manager_setup(request, test_db_args, test_db_database):
@@ -29,13 +30,7 @@ def manager(manager_setup, test_db_args, test_db_database):
 def test_ensure_connected():
     q = sql_lock.SQLLockManager('bad_manager')
 
-    with pytest.raises(sql_lock.NotConnected):
-        q.setup()
-    with pytest.raises(sql_lock.NotConnected):
-        q.destroy()
-    with pytest.raises(sql_lock.NotConnected):
-        q.ready()
-    with pytest.raises(sql_lock.NotConnected):
+    with pytest.raises(exceptions.NotConnected):
         q.acquire('asdf')
 
 def test_basic(manager):

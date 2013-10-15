@@ -1,5 +1,5 @@
-from memsql.common.connection_pool import ConnectionPool, MySQLError
-from memsql.common import errorcodes
+from memsql.common.connection_pool import MySQLError
+from memsql.common import errorcodes, sql_utility
 import time
 import uuid
 
@@ -12,47 +12,17 @@ CREATE TABLE IF NOT EXISTS %(name)s (
     expiry INT
 )"""
 
-class NotConnected(Exception):
-    pass
-
-class SQLLockManager(object):
+class SQLLockManager(sql_utility.SQLUtility):
     def __init__(self, table_prefix="sqllock"):
         """ Initialize the SQLLockManager with the specified table prefix.
         """
+        super(SQLLockManager, self).__init__()
+
         self.table_name = table_prefix.rstrip('_') + '_locks'
-        self._pool = ConnectionPool()
-        self._db_args = None
+        self._define_table(self.table_name, LOCK_TABLE % { 'name': self.table_name })
 
     ###############################
     # Public Interface
-
-    def connect(self, host='127.0.0.1', port=3306, user='root', password='', database=''):
-        """ Connect to the database specified """
-        self._db_args = { 'host': host, 'port': port, 'user': user, 'password': password, 'database': database }
-        with self._db_conn() as conn:
-            conn.query('SELECT 1')
-        return self
-
-    def setup(self):
-        """ Initialize the required tables in the database """
-        with self._db_conn() as conn:
-            conn.execute(LOCK_TABLE % { 'name': self.table_name })
-        return self
-
-    def destroy(self):
-        """ Destroy the SQLStepQueue tables in the database """
-        with self._db_conn() as conn:
-            conn.execute('DROP TABLE IF EXISTS %s' % self.table_name)
-        return self
-
-    def ready(self):
-        """ Returns True if the tables have been setup, False otherwise """
-        with self._db_conn() as conn:
-            tables = [row.t for row in conn.query('''
-                SELECT table_name AS t FROM information_schema.tables
-                WHERE table_schema=%s
-            ''', self._db_args['database'])]
-        return self.table_name in tables
 
     def acquire(self, lock_id, owner='', expiry=5 * 60, block=False, timeout=None, retry_interval=0.5):
         start = time.time()
@@ -68,11 +38,6 @@ class SQLLockManager(object):
 
     ###############################
     # Private Interface
-
-    def _db_conn(self):
-        if self._db_args is None:
-            raise NotConnected()
-        return self._pool.connect(**self._db_args)
 
     def _acquire_lock(self, lock_id, owner, expiry):
         try:

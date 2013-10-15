@@ -1,8 +1,7 @@
 import pytest
 import time
 import threading
-from memsql.common import sql_step_queue
-from memsql.common import database
+from memsql.common import sql_step_queue, database, exceptions
 
 memsql_required = pytest.mark.skipif(
     "os.environ.get('TRAVIS') == 'true'",
@@ -36,17 +35,11 @@ def queue(queue_setup, test_db_args, test_db_database):
 def test_ensure_connected():
     q = sql_step_queue.SQLStepQueue('bad_queue')
 
-    with pytest.raises(sql_step_queue.NotConnected):
-        q.setup()
-    with pytest.raises(sql_step_queue.NotConnected):
-        q.destroy()
-    with pytest.raises(sql_step_queue.NotConnected):
-        q.ready()
-    with pytest.raises(sql_step_queue.NotConnected):
+    with pytest.raises(exceptions.NotConnected):
         q.qsize()
-    with pytest.raises(sql_step_queue.NotConnected):
+    with pytest.raises(exceptions.NotConnected):
         q.enqueue({})
-    with pytest.raises(sql_step_queue.NotConnected):
+    with pytest.raises(exceptions.NotConnected):
         q.start()
 
 @memsql_required

@@ -96,7 +96,8 @@ def memsql_shutdown(data):
 ## Read/Write functions
 
 def memsql_read(data):
-    if data.config.memsqlnode or data.config.memsqlnode is None:
+    # if we don't have a data node AND we either havn't set memsqlnode, or memsql node is truthy
+    if data.node is None and (data.config.memsqlnode or data.config.memsqlnode is None):
         throttled_find_node(data)
 
     if data.node is not None:
@@ -116,7 +117,7 @@ def memsql_read_facts(data):
 
         if len(variables) > 0:
             tmpl = ['("%s", "memsql", "variables", %%s, %%s)' % data.node.alias]
-            with data.pool.connect_master() as conn:
+            with data.pool.connect() as conn:
                 conn.execute('''
                     INSERT INTO facts (alpha, beta, gamma, delta, value) VALUES %s
                     ON DUPLICATE KEY UPDATE value = VALUES(value)
@@ -182,7 +183,13 @@ def throttled_update_alias(data, collectd_sample):
 
 @throttle(60)
 def throttled_find_node(data):
-    data.node = cluster.find_node(data.pool)
+    node = cluster.find_node(data.pool)
+    if data.node is not None and node is not None:
+        # merge node details
+        data.node.update_from_node(node)
+    else:
+        data.node = node
+
     if data.node is not None:
         collectd.info('I am a MemSQL node: %s:%s' % (data.node.host, data.node.port))
 
@@ -190,7 +197,6 @@ def memsql_parse_types_file(path, data):
     """ This function tries to parse a collectd compliant types.db file.
     Basically stolen from collectd-carbon.
     """
-    collectd.debug('memsql_parse_types_file')
     types = data.typesdb
 
     f = open(path, 'r')
@@ -270,7 +276,7 @@ def cache_value(new_value, data_source_name, data_source_type, collectd_sample, 
         new_row.value = new_value
 
     else:
-        collectd.debug("MemSQL collectd. Undefined data source %s" % data_source_type)
+        collectd.info("MemSQL: Undefined data source %s" % data_source_type)
 
 ######################
 ## Register callbacks

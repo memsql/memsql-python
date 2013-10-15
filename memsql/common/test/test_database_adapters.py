@@ -9,7 +9,7 @@ def test_connection_close(test_db_conn):
     test_db_conn.close()
     assert not test_db_conn.connected()
 
-def test_reconnecct(test_db_conn):
+def test_reconnect(test_db_conn):
     assert test_db_conn.connected()
     db_instance = test_db_conn._db
     test_db_conn.reconnect()
@@ -21,6 +21,9 @@ def test_query(test_db_conn):
     res = test_db_conn.query('select 1')
     assert len(res) == 1
     assert res[0]['1'] == 1
+
+def test_ping(test_db_conn):
+    test_db_conn.ping()
 
 class TestQueries(object):
     @pytest.fixture(scope="class")
