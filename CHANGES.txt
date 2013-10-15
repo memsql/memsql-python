@@ -1,3 +1,11 @@
+2013-10-15 Version 2.6.0
+
+    * Added a useful class called SQLLockManager
+        * Produces SQLLock's attached to a database table
+        * These provide the means to coordinate resource access in a distributed system
+        * Locks timeout if they havn't been pinged in a configurable expiry time
+            * Ensure deadlocks can't happen due to parts of the distributed architecture failing
+
 2013-10-10 Version 2.5.0
 
     * The MemSQL collect plugin now flushes data using a thread
