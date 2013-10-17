@@ -96,8 +96,10 @@ def memsql_shutdown(data):
 ## Read/Write functions
 
 def memsql_read(data):
+    if data.config.memsqlnode or data.config.memsqlnode is None:
+        throttled_find_node(data)
+
     if data.node is not None:
-        # send memsql status first
         memsql_status = collectd.Values(plugin="memsql", plugin_instance="status", type="gauge")
         for name, value in data.node.status():
             memsql_status.dispatch(type_instance=name, values=[value])
@@ -105,8 +107,20 @@ def memsql_read(data):
             if name in cluster.COUNTER_STATUS_VARIABLES:
                 memsql_status.dispatch(type="counter", type_instance=name, values=[value])
 
-    elif data.config.memsqlnode or data.config.memsqlnode is None:
-        throttled_find_node(data)
+        memsql_read_facts(data)
+
+@throttle(60)
+def memsql_read_facts(data):
+    if data.node.alias is not None:
+        variables = list(sum(data.node.variables(), ()))
+
+        if len(variables) > 0:
+            tmpl = ['("%s", "memsql", "variables", %%s, %%s)' % data.node.alias]
+            with data.pool.connect_master() as conn:
+                conn.execute('''
+                    INSERT INTO facts (alpha, beta, gamma, delta, value) VALUES %s
+                    ON DUPLICATE KEY UPDATE value = VALUES(value)
+                ''' % ",".join(tmpl * (len(variables) / 2)), *variables)
 
 def memsql_write(collectd_sample, data):
     """ Write handler for collectd.
@@ -152,7 +166,7 @@ class FlushWorker(threading.Thread):
                 collectd.error(str(e))
 
             # sleep up till the start of the next second
-            sleep_time = math.floor(start+1) - start
+            sleep_time = math.floor(start + 1) - start
             time.sleep(sleep_time)
 
     def terminate(self):

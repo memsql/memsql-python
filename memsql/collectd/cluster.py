@@ -41,9 +41,12 @@ class Node(object):
         self.id = node_row.id
         self.host = node_row.host
         self.port = node_row.port
+        self.alias = None
         self._pool = ConnectionPool()
 
     def update_alias(self, connection_pool, alias):
+        self.alias = alias
+
         try:
             conn = connection_pool.connect_master()
 
@@ -83,3 +86,9 @@ class Node(object):
         if self.STATUS_CONSTS.search(value):
             return float(value.split(" ")[0])
         return float(value)
+
+    def variables(self):
+        with self.connect() as conn:
+            rows = conn.query('SHOW VARIABLES')
+        for row in rows:
+            yield (row.Variable_name, row.Value)
