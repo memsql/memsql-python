@@ -1,3 +1,11 @@
+2013-10-18 Version 2.7.0
+
+    * Added Network Testing module
+        * Kick off a bandwidth or latency test against a MemSQL server
+        * Lots of little tweaks here and there
+        * Refactored out some shared logic into sql_utility
+    * Insert MemSQL variables into the Ops Facts system
+
 2013-10-15 Version 2.6.0
 
     * Added a useful class called SQLLockManager
