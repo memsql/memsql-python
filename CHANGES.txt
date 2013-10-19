@@ -1,3 +1,8 @@
+2013-10-18 Version 2.7.1
+
+    * Tweaks to Network Testing module
+        * Changed the API a bit to operate better in a distributed environment
+
 2013-10-18 Version 2.7.0
 
     * Added Network Testing module
