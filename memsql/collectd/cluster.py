@@ -1,5 +1,6 @@
 from netifaces import interfaces, ifaddresses, AF_INET
 import re
+import socket
 from memsql.common.connection_pool import ConnectionPool
 
 # Status variables specified in the following array will be sent to
@@ -14,27 +15,39 @@ COUNTER_STATUS_VARIABLES = [
 ]
 
 def find_node(connection_pool):
-    addresses = ','.join(["'%s'" % address for address in _addresses_iter()])
+    addresses = _network_addresses()
+    addresses_sql = ','.join(["'%s'" % address for address in addresses])
     with connection_pool.connect() as conn:
         node_row = conn.get('''
             SELECT id, host, port
             FROM nodes
             WHERE nodes.host IN (%s)
             ORDER BY host, port LIMIT 1
-        ''' % addresses)
+        ''' % addresses_sql)
 
-    node = None
+    if node_row is None:
+        # we may be the master node, and the dashboard may be pointing at 127.0.0.1
+        with connection_pool.connect_master() as conn:
+            master_host = socket.gethostbyname(conn.connection_info()[0])
+            if master_host in addresses:
+                # ok we are the master
+                node_row = conn.get('''
+                    SELECT id, port, %s AS host
+                    FROM nodes WHERE master=1
+                ''', master_host)
+
     if node_row is not None:
-        node = Node(node_row)
+        return Node(node_row)
 
-    return node
-
-def _addresses_iter():
+def _network_addresses():
+    ret = []
     for interface in interfaces():
         details = ifaddresses(interface)
         if AF_INET in details:
             for link in details[AF_INET]:
-                yield link['addr']
+                if link['addr'] != '127.0.0.1':
+                    ret.append(link['addr'])
+    return ret
 
 class Node(object):
     def __init__(self, node_row):
