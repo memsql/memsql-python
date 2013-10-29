@@ -6,9 +6,9 @@ upload: all
 
 clean:
 	rm -rf *.egg memsql.egg-info dist build
-	find . -type f -name "*.pyc" -exec rm {} \;
-	for _kill_path in $$(find . -name "__pycache__"); do rm -rf $$_kill_path; done
 	python setup.py clean --all
+	for _kill_path in $$(find . -type f -name "*.pyc"); do rm -f $$_kill_path; done
+	for _kill_path in $$(find . -name "__pycache__"); do rm -rf $$_kill_path; done
 
 test:
 	python setup.py test
