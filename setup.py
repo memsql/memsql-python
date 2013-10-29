@@ -62,12 +62,11 @@ setup(
     ],
     packages=[
         'memsql',
-        'memsql.collectd',
         'memsql.common',
         'memsql.perf',
     ],
     zip_safe=False,
-    install_requires=['ordereddict', 'MySQL-python>=1.2.4', 'wraptor', 'netifaces', 'simplejson'],
+    install_requires=['ordereddict', 'MySQL-python>=1.2.4', 'wraptor', 'simplejson'],
     tests_require=['pytest', 'mock', 'pytest-xdist'],
     cmdclass={ 'test': PyTest },
 )
