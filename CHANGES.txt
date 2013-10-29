@@ -2,6 +2,7 @@
 
     * Extracted collectd plugin into a seperate library: memsql-collectd
         * https://github.com/memsql/memsql-collectd
+    * Better make clean
 
 2013-10-23 Version 2.7.2
 
