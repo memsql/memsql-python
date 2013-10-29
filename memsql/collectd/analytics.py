@@ -3,29 +3,38 @@ import threading
 import math
 from wraptor.decorators import throttle
 import calendar
+from itertools import repeat, chain, ifilter, islice, tee
+from memsql.collectd import util
 
-CLASSIFIERS = [ "alpha", "beta", "gamma", "delta", "epsilon", "zeta" ]
-ANALYTICS_COLUMNS = CLASSIFIERS + [ "created", "value", "classifier" ]
+CLASSIFIERS = [ "instance_id", "alpha", "beta", "gamma", "delta", "epsilon" ]
+CLASSIFIER_COLUMNS = CLASSIFIERS + [ "classifier", "id" ]
+
+ANALYTICS_COLUMNS = [ "classifier_id", "created", "value" ]
+ANALYTICS_TEMPLATE = ["(%s, %s, %s)"]
+
+def partition(iterator, cb):
+    """ partitions iterator into two lists by running callback on each value
+        * callback is only executed once per value
+        * iterator must be finite, as this is a non-lazy partition function
+    """
+    trues, falses = tee(((cb(x), x) for x in iterator), 2)
+    return [v for r, v in trues if r], [v for r, v in falses if not r]
 
 class AnalyticsRow(object):
-    __slots__ = [
-        'raw_value',
-        'classifier',
-        'created',
-        'value'
-    ]
-
-    def __init__(self, created, raw_value, *args):
+    def __init__(self, created, raw_value, *classifier):
         self.created = created
         self.raw_value = raw_value
+        self.instance_id = classifier[0]
 
-        classifier = []
-        for value in args:
-            value = self._parse_val(value)
-            if value:
-                classifier.append(value)
-        [classifier.append('') for i in range(len(CLASSIFIERS) - len(classifier))]
-        self.classifier = tuple(classifier)
+        self.value = None
+        self._iso_timestamp = None
+        self._classifier_id = None
+
+        self.classifier = tuple(
+            islice(chain(
+                ifilter(None, map(self._parse_val, classifier)),
+                repeat('')
+            ), len(CLASSIFIERS)))
 
     def _parse_val(self, value):
         if value:
@@ -34,13 +43,28 @@ class AnalyticsRow(object):
             return None
 
     @property
-    def iso_timestamp(self):
-        return datetime.utcfromtimestamp(int(self.created)).strftime('%Y-%m-%d %H:%M:%S')
+    def classifier_id(self):
+        if self._classifier_id is None:
+            self._classifier_id = util.hash_64_bit(*self.classifier)
+        return self._classifier_id
 
-    def values(self):
-        """ Returns the entire row as a tuple (classifier with created and value). """
-        joined_classifier = '.'.join([x for x in self.classifier if x is not ''])
-        return self.classifier + (self.iso_timestamp, self.value, joined_classifier)
+    @property
+    def iso_timestamp(self):
+        if self._iso_timestamp is None:
+            self._iso_timestamp = datetime.utcfromtimestamp(int(self.created)).strftime('%Y-%m-%d %H:%M:%S')
+        return self._iso_timestamp
+
+    @property
+    def joined_classifier(self):
+        return '.'.join([x for x in self.classifier if x != ''])
+
+    def classifier_values(self):
+        """ Returns the entire row as a tuple for the classifiers table. """
+        return self.classifier + (self.joined_classifier, self.classifier_id)
+
+    def analytics_values(self):
+        """ Returns a tuple for inserting into the analytics table. """
+        return (self.classifier_id, self.iso_timestamp, self.value)
 
     def valid(self):
         """ Validates that the value of this row is a valid value (ie. not None and not NaN) """
@@ -53,7 +77,9 @@ class AnalyticsCache(object):
     def __init__(self):
         self._lock = threading.RLock()
         self._pending = []
+        self._seen_classifiers = []
         self._previous_rows = {}
+        self._instance_id = None
 
     def swap_row(self, new_row):
         """ Stores new_row in the cache and returns the previous row
@@ -65,32 +91,73 @@ class AnalyticsCache(object):
             previous_row, self._previous_rows[classifier] = self._previous_rows.get(classifier, None), new_row
         return previous_row
 
-    def flush(self, conn):
+    def flush(self, agg_pool):
         """ Generates a multi-insert statement and executes it against the analytics table. """
 
-        # throttled garbage collect
-        self.garbage_collectd_pending()
+        # garbage collection routines
+        self.garbage_collect_pending()
+        self.garbage_collect_classifiers()
 
         # grab all the rows that need to be flushed
         with self._lock:
-            flushing = [r for r in self._pending if hasattr(r, 'value')]
-            self._pending = [r for r in self._pending if not hasattr(r, 'value')]
+            flushing, self._pending = partition(self._pending, lambda r: r.valid())
 
-        value_template = ['(' + ','.join(['%s'] * len(ANALYTICS_COLUMNS)) + ')']
-        columns = ','.join(ANALYTICS_COLUMNS)
-        while len(flushing):
-            batch, flushing = flushing[:50], flushing[50:]
+        if len(flushing) > 0:
+            # grab the instance id (they are all the same)
+            self._instance_id = flushing[0].instance_id
 
-            row_values = [row.values() for row in batch if row.valid()]
-            query_params = sum(row_values, ())
-            values = ','.join(value_template * len(row_values))
+            self.record_classifiers(agg_pool, flushing)
 
-            conn.execute("INSERT INTO analytics (%s) VALUES %s" % (columns, values), *query_params)
+            with agg_pool.connect() as conn:
+                columns = ','.join(ANALYTICS_COLUMNS)
+                while len(flushing):
+                    batch, flushing = flushing[:128], flushing[128:]
+
+                    row_values = [row.analytics_values() for row in batch]
+                    query_params = sum(row_values, ())
+                    values = ','.join(ANALYTICS_TEMPLATE * len(row_values))
+
+                    conn.execute("INSERT INTO analytics (%s) VALUES %s" % (columns, values), *query_params)
 
     @throttle(60)
-    def garbage_collectd_pending(self):
+    def garbage_collect_pending(self):
         """ Check the pending array for any old rows, and then delete them """
 
         now = calendar.timegm(datetime.now().utctimetuple())
         with self._lock:
             self._pending = [r for r in self._pending if r.created > (now - 360)]
+
+    def record_classifiers(self, agg_pool, analytic_rows):
+        value_template = ['(' + ','.join(['%s'] * len(CLASSIFIER_COLUMNS)) + ')']
+        columns = ','.join(CLASSIFIER_COLUMNS)
+
+        pending = []
+        for row in analytic_rows:
+            if row.classifier not in self._seen_classifiers:
+                pending.append(row)
+                self._seen_classifiers.append(row.classifier)
+
+        if len(pending) > 0:
+            with agg_pool.connect_master() as master_conn:
+                while len(pending):
+                    batch, pending = pending[:50], pending[50:]
+
+                    row_values = [row.classifier_values() for row in batch]
+                    query_params = sum(row_values, ())
+                    values = ','.join(value_template * len(row_values))
+
+                    master_conn.execute('''
+                        INSERT INTO classifiers (%s)
+                        VALUES %s
+                        ON DUPLICATE KEY UPDATE id=VALUES(id)
+                    ''' % (columns, values), *query_params)
+
+    @throttle(60 * 5)
+    def garbage_collect_classifiers(self):
+        """
+            The idea is to force the next record_classifiers to insert
+            all of the classifiers that we are missing.  This ensures
+            that we 'fix' any missing rows caused by garbage collection
+            once every 5 minutes.
+        """
+        self._seen_classifiers = []

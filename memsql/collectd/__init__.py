@@ -6,6 +6,7 @@ except:
 from memsql.common.random_aggregator_pool import RandomAggregatorPool
 from memsql.collectd.analytics import AnalyticsCache, AnalyticsRow
 from memsql.collectd import cluster
+from memsql.collectd import util
 from wraptor.decorators import throttle
 import threading
 import time
@@ -119,7 +120,7 @@ def memsql_read_facts(data):
             tmpl = ['("%s", "memsql", "variables", %%s, %%s)' % data.node.alias]
             with data.pool.connect() as conn:
                 conn.execute('''
-                    INSERT INTO facts (alpha, beta, gamma, delta, value) VALUES %s
+                    INSERT INTO facts (instance_id, alpha, beta, gamma, value) VALUES %s
                     ON DUPLICATE KEY UPDATE value = VALUES(value)
                 ''' % ",".join(tmpl * (len(variables) / 2)), *variables)
 
@@ -161,8 +162,7 @@ class FlushWorker(threading.Thread):
         while not self._stop.isSet():
             start = time.time()
             try:
-                with self.data.pool.connect() as conn:
-                    self.data.values_cache.flush(conn)
+                self.data.values_cache.flush(self.data.pool)
             except Exception as e:
                 collectd.error(str(e))
 
@@ -233,8 +233,8 @@ def cache_value(new_value, data_source_name, data_source_type, collectd_sample, 
     new_row = AnalyticsRow(
         int(collectd_sample.time),
         new_value,
-        collectd_sample.host,
-        collectd_sample.plugin,
+        collectd_sample.host,  # instance_id
+        collectd_sample.plugin,  # alpha...
         collectd_sample.plugin_instance,
         collectd_sample.type,
         collectd_sample.type_instance,
