@@ -2,8 +2,8 @@ import _mysql, errno, Queue
 import multiprocessing
 import logging
 from memsql.common import database
-from memsql.common.database import MySQLError
 
+MySQLError = database.MySQLError
 QUEUE_SIZE = 128
 
 class PoolConnectionException(IOError):
@@ -11,8 +11,12 @@ class PoolConnectionException(IOError):
 
     def __init__(self, errno, message, connection_key):
         IOError.__init__(self, errno, message)
-        self.message = message
         (self.host, self.port, self.user, self.password, self.db_name, self.pid) = connection_key
+
+    def _get_message(self):
+        return self.args[1]
+
+    message = property(_get_message)
 
 class ConnectionPool(object):
     def __init__(self):

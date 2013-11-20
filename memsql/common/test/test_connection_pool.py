@@ -154,6 +154,6 @@ def test_size(pool, test_key, db_args):
     assert pool.size() == 1
 
     fairy = pool.connect(*db_args)
-    fairy2 = pool.connect(*db_args)
+    fairy2 = pool.connect(*db_args)  # noqa
 
     assert pool.size() == 2
