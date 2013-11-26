@@ -2,6 +2,8 @@ import pytest
 from memsql.common import database
 import os
 
+host = os.environ.get('MEMSQL_PYTHON_TEST_HOST', 'leaf-1.cs.memcompute.com')
+
 @pytest.fixture(scope="module")
 def test_db_database():
     return "memsql_python_tests"
@@ -17,7 +19,7 @@ def test_db_args():
         }
     else:
         return {
-            "host": 'leaf-1.cs.memcompute.com',
+            "host": host,
             "port": 3306,
             "user": 'root',
             "password": ''

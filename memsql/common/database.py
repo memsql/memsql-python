@@ -13,6 +13,7 @@ from MySQLdb.converters import conversions
 
 MySQLError = _mysql.MySQLError
 OperationalError = _mysql.OperationalError
+DatabaseError = _mysql.DatabaseError
 
 def connect(*args, **kwargs):
     return Connection(*args, **kwargs)
