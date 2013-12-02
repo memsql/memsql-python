@@ -11,6 +11,8 @@ except:
 
 from MySQLdb.converters import conversions
 
+from exceptions import FormatException
+
 MySQLError = _mysql.MySQLError
 OperationalError = _mysql.OperationalError
 DatabaseError = _mysql.DatabaseError
@@ -101,19 +103,19 @@ class Connection(object):
         """ Ping the server """
         return self._db.ping()
 
-    def debug_query(self, query, *parameters):
-        return self._query(query, parameters, debug=True)
+    def debug_query(self, query, *parameters, **kwparameters):
+        return self._query(query, parameters, kwparameters, debug=True)
 
-    def query(self, query, *parameters):
+    def query(self, query, *parameters, **kwparameters):
         """
         Query the connection and return the rows (or affected rows if not a
         select query).  Mysql errors will be propogated as exceptions.
         """
-        return self._query(query, parameters)
+        return self._query(query, parameters, kwparameters)
 
-    def get(self, query, *parameters):
+    def get(self, query, *parameters, **kwparameters):
         """Returns the first row returned for the given query."""
-        rows = self._query(query, parameters)
+        rows = self._query(query, parameters, kwparameters)
         if not rows:
             return None
         elif not isinstance(rows, list):
@@ -125,13 +127,13 @@ class Connection(object):
 
     # rowcount is a more reasonable default return value than lastrowid,
     # but for historical compatibility execute() must return lastrowid.
-    def execute(self, query, *parameters):
+    def execute(self, query, *parameters, **kwparameters):
         """Executes the given query, returning the lastrowid from the query."""
-        return self.execute_lastrowid(query, *parameters)
+        return self.execute_lastrowid(query, *parameters, **kwparameters)
 
-    def execute_lastrowid(self, query, *parameters):
+    def execute_lastrowid(self, query, *parameters, **kwparameters):
         """Executes the given query, returning the lastrowid from the query."""
-        self._execute(query, parameters)
+        self._execute(query, parameters, kwparameters)
         self._result = self._db.store_result()
         return self._db.insert_id()
 
@@ -145,8 +147,8 @@ class Connection(object):
             self.reconnect()
         self._last_use_time = time.time()
 
-    def _query(self, query, parameters, debug=False):
-        self._execute(query, parameters, debug)
+    def _query(self, query, parameters, kwparameters, debug=False):
+        self._execute(query, parameters, kwparameters, debug)
         self._result = self._db.use_result()
         if self._result is None:
             return self._rowcount
@@ -155,16 +157,20 @@ class Connection(object):
         ret = SelectResult(fields, rows)
         return ret
 
-    def _execute(self, query, parameters, debug=False):
-        if parameters is not None and parameters != ():
-            params = []
-            for param in parameters:
-                if isinstance(param, unicode):
-                    params.append(param.encode(self._db.character_set_name()))
-                else:
-                    params.append(param)
+    def _ensure_encoded(param):
+        if isinstance(param, unicode):
+            return param.encode(self._db.character_set_name())
+        return param
 
+    def _execute(self, query, parameters, kwparameters, debug=False):
+        if parameters != () and kwparameters != {}:
+            raise FormatException()
+        if parameters != ():
+            params = map(self._ensure_encoded, parameters)
             query = query % self._db.escape(params, self.encoders)
+        if kwparameters != {}:
+            kwparams = dict((k, self._ensure_encoded(v)) for k, v in kwparameters)
+            query = query % self._db.escape(kwparams, self.encoders)
 
         if isinstance(query, unicode):
             query = query.encode(self._db.character_set_name())
