@@ -4,3 +4,6 @@ class NotConnected(Exception):
 
 class RequiresDatabase(Exception):
     pass
+
+class FormatException(Exception):
+    pass
