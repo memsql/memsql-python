@@ -1,3 +1,13 @@
+2014-01-03 Version 2.9.0
+
+    * Implemented _mysql 1.2.5 compatability
+        * All of the query methods now take lists and tuples as
+          arguments.  They will expand into ','.join(escaped_sequence).
+    * Public interface should be 100% backwards compatable
+    * All of the query methods now take kwargs.  If you specify kwargs, your
+      query will require %(arg_name)s blocks as opposed to %s blocks.  You
+      can't pass both args and kwargs.
+
 2013-11-26 Version 2.8.2
 
     * Fixed a random_aggregator_pool bug
