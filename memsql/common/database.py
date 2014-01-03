@@ -101,19 +101,29 @@ class Connection(object):
         """ Ping the server """
         return self._db.ping()
 
-    def debug_query(self, query, *parameters):
-        return self._query(query, parameters, debug=True)
+    def _ensure_connected(self):
+        # Mysql by default closes client connections that are idle for
+        # 8 hours, but the client library does not report this fact until
+        # you try to perform a query and it fails.  Protect against this
+        # case by preemptively closing and reopening the connection
+        # if it has been idle for too long (7 hours by default).
+        if (self._db is None or (time.time() - self._last_use_time > self.max_idle_time)):
+            self.reconnect()
+        self._last_use_time = time.time()
 
-    def query(self, query, *parameters):
+    def debug_query(self, query, *parameters, **kwparamaters):
+        return self._query(query, parameters, kwparamaters, debug=True)
+
+    def query(self, query, *parameters, **kwparamaters):
         """
         Query the connection and return the rows (or affected rows if not a
         select query).  Mysql errors will be propogated as exceptions.
         """
-        return self._query(query, parameters)
+        return self._query(query, parameters, kwparamaters)
 
-    def get(self, query, *parameters):
+    def get(self, query, *parameters, **kwparamaters):
         """Returns the first row returned for the given query."""
-        rows = self._query(query, parameters)
+        rows = self._query(query, parameters, kwparamaters)
         if not rows:
             return None
         elif not isinstance(rows, list):
@@ -125,28 +135,18 @@ class Connection(object):
 
     # rowcount is a more reasonable default return value than lastrowid,
     # but for historical compatibility execute() must return lastrowid.
-    def execute(self, query, *parameters):
+    def execute(self, query, *parameters, **kwparamaters):
         """Executes the given query, returning the lastrowid from the query."""
-        return self.execute_lastrowid(query, *parameters)
+        return self.execute_lastrowid(query, *parameters, **kwparamaters)
 
-    def execute_lastrowid(self, query, *parameters):
+    def execute_lastrowid(self, query, *parameters, **kwparamaters):
         """Executes the given query, returning the lastrowid from the query."""
-        self._execute(query, parameters)
+        self._execute(query, parameters, kwparamaters)
         self._result = self._db.store_result()
         return self._db.insert_id()
 
-    def _ensure_connected(self):
-        # Mysql by default closes client connections that are idle for
-        # 8 hours, but the client library does not report this fact until
-        # you try to perform a query and it fails.  Protect against this
-        # case by preemptively closing and reopening the connection
-        # if it has been idle for too long (7 hours by default).
-        if (self._db is None or (time.time() - self._last_use_time > self.max_idle_time)):
-            self.reconnect()
-        self._last_use_time = time.time()
-
-    def _query(self, query, parameters, debug=False):
-        self._execute(query, parameters, debug)
+    def _query(self, query, parameters, kwparamaters, debug=False):
+        self._execute(query, parameters, kwparamaters, debug)
         self._result = self._db.use_result()
         if self._result is None:
             return self._rowcount
@@ -155,16 +155,27 @@ class Connection(object):
         ret = SelectResult(fields, rows)
         return ret
 
-    def _execute(self, query, parameters, debug=False):
-        if parameters is not None and parameters != ():
-            params = []
-            for param in parameters:
-                if isinstance(param, unicode):
-                    params.append(param.encode(self._db.character_set_name()))
-                else:
-                    params.append(param)
+    def _escape_unicode(self, param):
+        if isinstance(param, unicode):
+            return param.encode(self._db.character_set_name())
+        else:
+            return param
 
-            query = query % self._db.escape(params, self.encoders)
+    def _escape(self, param):
+        if isinstance(param, (list, tuple)):
+            param = [self._escape_unicode(p) for p in param]
+            return ','.join(_mysql.escape_sequence(param, self.encoders))
+        else:
+            return self._db.escape(self._escape_unicode(param), self.encoders)
+
+    def _execute(self, query, parameters, kwparamaters, debug=False):
+        if parameters and kwparamaters:
+            raise ValueError('database.py querying functions can receive *args or **kwargs, but not both')
+
+        if parameters:
+            query = query % tuple([self._escape(item) for item in parameters])
+        elif kwparamaters:
+            query = query % dict((key, self._escape(item)) for key, item in kwparamaters.iteritems())
 
         if isinstance(query, unicode):
             query = query.encode(self._db.character_set_name())

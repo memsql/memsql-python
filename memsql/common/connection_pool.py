@@ -91,20 +91,22 @@ class _PoolConnectionFairy(object):
         self.close()
 
     def __wrap_errors(self, fn, *args, **kwargs):
-        try:
-            return fn(*args, **kwargs)
-        except IOError as e:
-            if e.errno in [errno.ECONNRESET, errno.ECONNREFUSED, errno.ETIMEDOUT]:
-                # socket connection issues
-                self.__handle_connection_failure(e)
-            else:
-                raise
-        except _mysql.OperationalError as e:
-            # _mysql specific database connect issues, internal state issues
-            if hasattr(self, '_conn'):
-                self.__potential_connection_failure(e)
-            else:
-                self.__handle_connection_failure(e)
+        def wrapped(*args, **kwargs):
+            try:
+                return fn(*args, **kwargs)
+            except IOError as e:
+                if e.errno in [errno.ECONNRESET, errno.ECONNREFUSED, errno.ETIMEDOUT]:
+                    # socket connection issues
+                    self.__handle_connection_failure(e)
+                else:
+                    raise
+            except _mysql.OperationalError as e:
+                # _mysql specific database connect issues, internal state issues
+                if hasattr(self, '_conn'):
+                    self.__potential_connection_failure(e)
+                else:
+                    self.__handle_connection_failure(e)
+        return wrapped
 
     def __potential_connection_failure(self, e):
         """ OperationalError's are emitted by the _mysql library for
@@ -145,29 +147,13 @@ class _PoolConnectionFairy(object):
             self._conn = self._pool._connections[self._key].get_nowait()
         except Queue.Empty:
             (host, port, user, password, db_name, pid) = self._key
-            self._conn = self.__wrap_errors(database.connect,
-                host=host, port=port, user=user, password=password, database=db_name)
+            _connect = self.__wrap_errors(database.connect)
+            self._conn = _connect(host=host, port=port, user=user, password=password, database=db_name)
 
-    def connected(self):
-        return self.__wrap_errors(self._conn.connected)
-
-    def reconnect(self):
-        return self.__wrap_errors(self._conn.reconnect)
-
-    def debug_query(self, query, *parameters):
-        return self.__wrap_errors(self._conn.debug_query, query, *parameters)
-
-    def query(self, query, *parameters):
-        return self.__wrap_errors(self._conn.query, query, *parameters)
-
-    def get(self, query, *parameters):
-        return self.__wrap_errors(self._conn.get, query, *parameters)
-
-    def execute(self, query, *parameters):
-        return self.__wrap_errors(self._conn.execute, query, *parameters)
-
-    def execute_lastrowid(self, query, *parameters):
-        return self.__wrap_errors(self._conn.execute_lastrowid, query, *parameters)
-
-    def ping(self):
-        return self.__wrap_errors(self._conn.ping)
+    # catchall
+    def __getattr__(self, key):
+        method = getattr(self._conn, key, None)
+        if method is None:
+            raise AttributeError('Attribute `%s` does not exist' % key)
+        else:
+            return self.__wrap_errors(method)

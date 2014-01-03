@@ -10,14 +10,20 @@ class PyTest(TestCommand):
     user_options = [
         ('watch', 'w',
          "watch tests for changes"),
-        ('scan-directory=', 'd',
-         "only search for tests in the specified directory"),
+        ('pdb', 'i',
+         "start pdb on failures"),
+        ('scan=', 's',
+         "only search for tests in the specified directory or file"),
+        ('exitfirst', 'x',
+         "Stop tests on first failure"),
     ]
     boolean_options = ['watch']
 
     def initialize_options(self):
         self.watch = False
-        self.scan_directory = None
+        self.pdb = False
+        self.scan = None
+        self.exitfirst = False
         self.test_suite = None
         self.test_module = None
         self.test_loader = None
@@ -29,8 +35,12 @@ class PyTest(TestCommand):
         self.test_args = []
         if self.watch:
             self.test_args.append('-f')
-        if self.scan_directory is not None:
-            self.test_args.append(self.scan_directory)
+        if self.pdb:
+            self.test_args.append('--pdb')
+        if self.exitfirst:
+            self.test_args.append('-x')
+        if self.scan is not None:
+            self.test_args.append(self.scan)
 
     def run_tests(self):
         import os, sys, glob
@@ -66,7 +76,7 @@ setup(
         'memsql.perf',
     ],
     zip_safe=False,
-    install_requires=['ordereddict', 'MySQL-python>=1.2.4', 'wraptor', 'simplejson'],
+    install_requires=['ordereddict', 'MySQL-python==1.2.5', 'wraptor', 'simplejson'],
     tests_require=['pytest', 'mock', 'pytest-xdist'],
     cmdclass={ 'test': PyTest },
 )

@@ -41,7 +41,7 @@ class TestQueries(object):
     @pytest.fixture(scope="class", autouse=True)
     def ensure_schema(self, x_conn, request):
         x_conn.execute('DROP TABLE IF EXISTS x')
-        x_conn.execute('CREATE TABLE x (id BIGINT AUTO_INCREMENT PRIMARY KEY, value INT)')
+        x_conn.execute('CREATE TABLE x (id BIGINT AUTO_INCREMENT PRIMARY KEY, value INT, col1 VARCHAR(255), col2 VARCHAR(255))')
 
     @pytest.fixture(autouse=True)
     def ensure_empty(self, x_conn, request):
@@ -72,6 +72,20 @@ class TestQueries(object):
         first_row = x_conn.get('SELECT * FROM x ORDER BY id LIMIT 1')
         assert first_row.value == 1
 
+    def test_unicode(self, x_conn):
+        x_conn.execute('INSERT INTO x (col1) VALUES (%s)', u'bob')
+        rows = x_conn.query('SELECT * FROM x WHERE col1=%s', u'bob')
+        assert len(rows) == 1
+        assert rows[0].col1 == 'bob'
+
+        rows = x_conn.query('SELECT * FROM x WHERE col1 in (%s)', [u'bob', 'jones'])
+        assert len(rows) == 1
+        assert rows[0].col1 == 'bob'
+
+        rows = x_conn.query('SELECT * FROM x WHERE col1=%(col1)s', col1=u'bob')
+        assert len(rows) == 1
+        assert rows[0].col1 == 'bob'
+
     def test_queryparams(self, x_conn):
         x_conn.execute('INSERT INTO x (value) VALUES (1), (2), (3)')
 
@@ -79,3 +93,45 @@ class TestQueries(object):
 
         assert len(rows) == 1
         assert rows[0].value == 2
+
+    def test_advanced_params(self, x_conn):
+        # multi-column insert with array
+        x_conn.debug_query('''
+            INSERT INTO x (value, col1, col2) VALUES (%s, %s)
+        ''', 1, ['bob', 'jones'])
+
+        x_conn.debug_query('''
+            INSERT INTO x (value, col1, col2) VALUES (%(value)s, %(other)s)
+        ''', value=1, other=['bob', 'jones'])
+
+        rows = x_conn.query('SELECT * FROM x WHERE value = %s and col1 = %s', 1, 'bob')
+
+        assert len(rows) == 2
+        for i in range(2):
+            assert rows[i].value == 1
+            assert rows[i].col1 == 'bob'
+            assert rows[i].col2 == 'jones'
+
+    def test_kwargs(self, x_conn):
+        # multi-column insert with kwargs
+        x_conn.execute('''
+            INSERT INTO x (value, col1, col2) VALUES (%(value)s, %(col1)s, %(col2)s)
+        ''', value=1, col1='bilbo', col2='jones')
+
+        rows = x_conn.query('SELECT * FROM x WHERE value = %s and col1 = %s', 1, 'bilbo')
+
+        assert len(rows) == 1
+        assert rows[0].value == 1
+        assert rows[0].col1 == 'bilbo'
+        assert rows[0].col2 == 'jones'
+
+    def test_kwargs_all(self, x_conn):
+        # ensure they all support kwargs
+        for method in ['debug_query', 'query', 'get', 'execute', 'execute_lastrowid']:
+            getattr(x_conn, method)('''select * from x where col1=%(col1)s''', col1='bilbo')
+
+    def test_kwparams_exclusive(self, x_conn):
+        # ensure they are all exclusive
+        for method in ['debug_query', 'query', 'get', 'execute', 'execute_lastrowid']:
+            with pytest.raises(ValueError):
+                getattr(x_conn, method)('''select * from x where col1=%(col1)s''', 1, col1='bilbo')

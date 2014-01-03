@@ -2,6 +2,8 @@ import pytest
 import mock
 import multiprocessing
 
+from memsql.common.test.test_database_adapters import TestQueries
+
 @pytest.fixture
 def test_key(test_db_args):
     return (test_db_args['host'],
@@ -78,6 +80,22 @@ def test_fairy_reconnect(fairy):
     assert fairy.connected()
     fairy.reconnect()
     assert fairy.connected()
+
+@pytest.fixture()
+def _fairy_queries_fixture(request, fairy, test_db_args, test_db_database):
+    test_queries = TestQueries()
+    conn = test_queries.x_conn(request, test_db_args, test_db_database)
+    test_queries.ensure_schema(conn, request)
+
+def test_fairy_queries(fairy, _fairy_queries_fixture, test_db_database):
+    test_queries = TestQueries()
+
+    fairy.execute('USE %s' % test_db_database)
+
+    for attr in dir(test_queries):
+        if attr.startswith('test_'):
+            getattr(test_queries, attr)(fairy)
+        fairy.execute('DELETE FROM x')
 
 def test_fairy_query(fairy):
     r = fairy.query('SELECT 1')
