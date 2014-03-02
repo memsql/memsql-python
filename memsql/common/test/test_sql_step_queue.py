@@ -2,6 +2,7 @@ import pytest
 import time
 import threading
 from memsql.common import sql_step_queue, database, exceptions
+from memsql.common.test.thread_monitor import ThreadMonitor
 
 memsql_required = pytest.mark.skipif(
     "os.environ.get('TRAVIS') == 'true'",
@@ -26,8 +27,7 @@ def queue(queue_setup, test_db_args, test_db_database):
     q = sql_step_queue.SQLStepQueue('test').connect(**test_db_args)
 
     with q._db_conn() as conn:
-        conn.query('DELETE FROM %s' % q.tasks_table)
-        conn.query('DELETE FROM %s' % q.executions_table)
+        conn.query('DELETE FROM %s' % q.table_name)
 
     return q
 
@@ -61,30 +61,42 @@ def test_start_block(queue):
     data = { 'hello': 'world' }
 
     def _test():
-        handler = queue.start(block=True, block_timeout=0.01)
+        handler = queue.start(block=True, timeout=1)
+        assert handler is not None
         assert handler.data == data
 
-    _t = threading.Thread(target=_test)
+    monitor = ThreadMonitor()
+    _t = threading.Thread(target=monitor.wrap(_test))
     _t.start()
 
     time.sleep(0.2)
     queue.enqueue(data)
 
     _t.join()
+    monitor.check()
 
 @memsql_required
 def test_multi_start(queue):
     queue.enqueue({})
     handlers = []
+    start_evt = threading.Event()
 
     def _test():
+        start_evt.wait(30)
         handler = queue.start()
         if handler is not None:
             handlers.append(handler)
 
-    threads = [threading.Thread(target=_test) for i in range(10)]
-    [t.start() for t in threads]
-    [t.join() for t in threads]
+    monitor = ThreadMonitor()
+
+    for i in range(5):
+        start_evt.clear()
+        threads = [threading.Thread(target=monitor.wrap(_test)) for i in range(10)]
+        [t.start() for t in threads]
+        start_evt.set()
+        [t.join() for t in threads]
+
+    monitor.check()
 
     assert len(handlers) == 1
     assert handlers[0].valid()
@@ -97,7 +109,7 @@ def test_handler_basic(queue):
     handler = queue.start()
 
     with queue._db_conn() as conn:
-        task_id = conn.get('SELECT id FROM %s' % queue.tasks_table).id
+        task_id = conn.get('SELECT id FROM %s' % queue.table_name).id
 
     assert handler.data == data
     assert handler.valid()
@@ -111,7 +123,7 @@ def test_handler_basic_2(queue):
     handler = queue.start()
 
     with queue._db_conn() as conn:
-        task_id = conn.get('SELECT id FROM %s' % queue.tasks_table).id
+        task_id = conn.get('SELECT id FROM %s' % queue.table_name).id
 
     assert handler.data == data
     assert handler.valid()
@@ -123,6 +135,7 @@ def test_handler_basic_2(queue):
         assert 'start' in step_data
         assert 'stop' not in step_data
 
+    step_data = handler._get_step('test')
     assert 'stop' in step_data
     assert step_data['duration'] > 0
 
@@ -167,6 +180,7 @@ def test_start_stop_step(queue):
 
     handler.stop_step('test')
 
+    step_data = handler._get_step('test')
     assert 'stop' in step_data
 
     with pytest.raises(sql_step_queue.StepAlreadyFinished):
@@ -185,6 +199,7 @@ def test_finished_basic(queue):
 
     handler.finish()
 
+    assert handler.data['result'] == 'success'
     assert not handler.valid()
 
     with pytest.raises(sql_step_queue.AlreadyFinished):
@@ -200,6 +215,47 @@ def test_finished_basic(queue):
             pass
 
 @memsql_required
+def test_timeout_fails(queue):
+    queue.enqueue({})
+    handler = queue.start()
+
+    queue.execution_ttl = 1
+    time.sleep(1.5)
+
+    assert not handler.valid()
+
+    with pytest.raises(sql_step_queue.TaskDoesNotExist):
+        handler.ping()
+    with pytest.raises(sql_step_queue.TaskDoesNotExist):
+        handler.finish()
+    with pytest.raises(sql_step_queue.TaskDoesNotExist):
+        handler.start_step('asdf')
+    with pytest.raises(sql_step_queue.StepNotStarted):
+        handler.stop_step('asdf')
+    with pytest.raises(sql_step_queue.TaskDoesNotExist):
+        with handler.step('asdf'):
+            pass
+
+def test_requeue_fails(queue):
+    queue.enqueue({})
+    handler = queue.start()
+
+    handler.requeue()
+    assert not handler.valid()
+
+    with pytest.raises(sql_step_queue.TaskDoesNotExist):
+        handler.ping()
+    with pytest.raises(sql_step_queue.TaskDoesNotExist):
+        handler.finish()
+    with pytest.raises(sql_step_queue.TaskDoesNotExist):
+        handler.start_step('asdf')
+    with pytest.raises(sql_step_queue.StepNotStarted):
+        handler.stop_step('asdf')
+    with pytest.raises(sql_step_queue.TaskDoesNotExist):
+        with handler.step('asdf'):
+            pass
+
+@memsql_required
 def test_multi_queue(queue):
     queue.enqueue({})
     queue.enqueue({})
@@ -211,14 +267,14 @@ def test_multi_queue(queue):
 
     assert handler.task_id != handler2.task_id
 
+    assert queue.start() is None
+
     handler2.finish()
     assert handler.valid()
     assert not handler2.valid()
 
     queue.execution_ttl = 1
-
     time.sleep(1.2)
-    handler.finish()
     assert not handler.valid()
 
 @memsql_required
@@ -253,3 +309,56 @@ def test_complex_multi_queue(queue):
     handler2.finish()
 
     assert queue.qsize() == 0
+
+@memsql_required
+def test_extra_predicate_basic(queue):
+    queue.enqueue({ 'test': 1 })
+    queue.enqueue({ 'test': 5 })
+
+    handler = queue.start(extra_predicate=('data::$test = %s', (5, )))
+    assert handler is not None
+    assert handler.data == { 'test': 5 }
+
+    handler.requeue()
+
+    handler = queue.start(extra_predicate=('data::$test = %(v)s', { 'v': 5 }))
+    assert handler is not None
+    assert handler.data == { 'test': 5 }
+
+    handler.requeue()
+
+    handler = queue.start(extra_predicate=('data::$test = %s', 5))
+    assert handler is not None
+    assert handler.data == { 'test': 5 }
+
+@memsql_required
+def test_bulk_finish_basic(queue):
+    queue.enqueue({ })
+    queue.enqueue({ })
+    queue.enqueue({ })
+    queue.enqueue({ })
+
+    handler = queue.start()
+    assert handler is not None
+    assert handler.valid()
+
+    assert queue.qsize() == 3
+
+    queue.bulk_finish()
+
+    assert queue.qsize() == 0
+
+    assert handler is not None
+    assert handler.valid()
+
+@memsql_required
+def test_bulk_finish_more(queue):
+    queue.enqueue({ })
+    queue.enqueue({ 'test': 'foo' })
+
+    assert queue.qsize() == 2
+
+    queue.bulk_finish(extra_predicate=('data::$test = %s', 'foo'))
+
+    assert queue.qsize() == 1
+    assert queue.start().data == { }

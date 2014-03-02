@@ -1,4 +1,4 @@
 ordereddict
-MySQL-python>=1.2.4
+MySQL-python==1.2.5
 wraptor
-netifaces
+simplejson

@@ -16,6 +16,8 @@ class PyTest(TestCommand):
          "only search for tests in the specified directory or file"),
         ('exitfirst', 'x',
          "Stop tests on first failure"),
+        ('expression=', 'k',
+         "Only run tests matching given expression"),
     ]
     boolean_options = ['watch']
 
@@ -24,6 +26,7 @@ class PyTest(TestCommand):
         self.pdb = False
         self.scan = None
         self.exitfirst = False
+        self.expression = None
         self.test_suite = None
         self.test_module = None
         self.test_loader = None
@@ -32,15 +35,19 @@ class PyTest(TestCommand):
         TestCommand.finalize_options(self)
 
         self.test_suite = True
-        self.test_args = []
+        self.test_args = ['-v']
         if self.watch:
             self.test_args.append('-f')
         if self.pdb:
             self.test_args.append('--pdb')
         if self.exitfirst:
             self.test_args.append('-x')
+        if self.expression:
+            self.test_args.extend(['-k', self.expression])
         if self.scan is not None:
             self.test_args.append(self.scan)
+        else:
+            self.test_args.append('memsql')
 
     def run_tests(self):
         import os, sys, glob
