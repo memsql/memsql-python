@@ -1,3 +1,12 @@
+2014-02-02 Version 2.10.0
+
+    * Modified SQLStepQueue to work with MemSQL distributed
+    * added tests
+    * added extra_predicate (to pop/inspect different subsets of the queue)
+    * exposed escaping in database.py
+    * fixed some 2.6 compatibility issues
+    * added requeue and bulk_finish to sql_step_queue
+
 2014-01-03 Version 2.9.0
 
     * Implemented _mysql 1.2.5 compatability
