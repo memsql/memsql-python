@@ -10,6 +10,7 @@ memsql_required = pytest.mark.skipif(
 )
 
 @pytest.fixture(scope="module")
+@memsql_required
 def queue_setup(request, test_db_args, test_db_database):
     with database.connect(**test_db_args) as conn:
         conn.execute('CREATE DATABASE IF NOT EXISTS %s' % test_db_database)
@@ -22,6 +23,7 @@ def queue_setup(request, test_db_args, test_db_database):
     request.addfinalizer(cleanup)
 
 @pytest.fixture
+@memsql_required
 def queue(queue_setup, test_db_args, test_db_database):
     test_db_args['database'] = test_db_database
     q = sql_step_queue.SQLStepQueue('test').connect(**test_db_args)
@@ -236,6 +238,7 @@ def test_timeout_fails(queue):
         with handler.step('asdf'):
             pass
 
+@memsql_required
 def test_requeue_fails(queue):
     queue.enqueue({})
     handler = queue.start()
