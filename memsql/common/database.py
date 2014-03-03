@@ -191,12 +191,13 @@ class SelectResult(list):
         return list.__getitem__(self, i)
 
 def escape_query(query, parameters):
-    if isinstance(parameters, (list, tuple)):
-        query = query % tuple(map(_escape, parameters))
-    elif isinstance(parameters, dict):
-        query = query % dict(map(lambda (key, item): (key, _escape(item)), parameters.iteritems()))
-    else:
-        assert False, 'not sure what to do with parameters of type %s' % type(parameters)
+    if parameters:
+        if isinstance(parameters, (list, tuple)):
+            query = query % tuple(map(_escape, parameters))
+        elif isinstance(parameters, dict):
+            query = query % dict(map(lambda (key, item): (key, _escape(item)), parameters.iteritems()))
+        else:
+            assert False, 'not sure what to do with parameters of type %s' % type(parameters)
 
     return _escape_unicode(query)
 

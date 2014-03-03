@@ -135,3 +135,6 @@ class TestQueries(object):
         for method in ['debug_query', 'query', 'get', 'execute', 'execute_lastrowid']:
             with pytest.raises(ValueError):
                 getattr(x_conn, method)('''select * from x where col1=%(col1)s''', 1, col1='bilbo')
+
+    def test_single_format(self, x_conn):
+        x_conn.query("select * from x where col1 LIKE '%'")
