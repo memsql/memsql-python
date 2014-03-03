@@ -1,3 +1,8 @@
+2014-02-03 Version 2.10.1
+
+    * 2.10.0 made certain queries go through the formatter even without
+      params, this broke things like having single percents in queries.
+
 2014-02-02 Version 2.10.0
 
     * Modified SQLStepQueue to work with MemSQL distributed
