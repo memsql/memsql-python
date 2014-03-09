@@ -1,3 +1,8 @@
+2014-03-09 Version 2.10.3
+
+    * Re-enabled _ensure_connected
+    * Added select_db method to database connections
+
 2014-03-09 Version 2.10.2
 
     * Made it easier to modify data on a task_handler
