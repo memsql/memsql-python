@@ -365,3 +365,22 @@ def test_bulk_finish_more(queue):
 
     assert queue.qsize() == 1
     assert queue.start().data == { }
+
+@memsql_required
+def test_data_manip(queue):
+    queue.enqueue({ 'a': 1 })
+    handler = queue.start()
+
+    assert handler.data['a'] == 1
+
+    handler.data['a'] = 2
+    handler.save()
+    handler.refresh()
+
+    assert handler.data['a'] == 2
+
+    handler._save(data={ 'b': 2 })
+    assert handler.data['b'] == 2
+
+    handler.refresh()
+    assert handler.data['b'] == 2

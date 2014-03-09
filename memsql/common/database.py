@@ -41,10 +41,6 @@ class Connection(object):
         self.database = database
         self.max_idle_time = max_idle_time
 
-        sys_vars = {
-            "character_set_server":  "utf8",
-            "collation_server":      "utf8_general_ci"
-        }
         args = {
             "db": database,
             "conv": conversions
@@ -57,7 +53,6 @@ class Connection(object):
 
         args["host"] = host
         args["port"] = int(port)
-        args["init_command"] = 'set names "utf8" collate "utf8_bin"' + ''.join([', @@%s = "%s"' % t for t in sys_vars.items()])
 
         self._db = None
         self._db_args = args

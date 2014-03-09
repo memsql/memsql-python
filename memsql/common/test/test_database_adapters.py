@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import pytest
 from memsql.common import database
 
@@ -73,18 +75,18 @@ class TestQueries(object):
         assert first_row.value == 1
 
     def test_unicode(self, x_conn):
-        x_conn.execute('INSERT INTO x (col1) VALUES (%s)', u'bob')
-        rows = x_conn.query('SELECT * FROM x WHERE col1=%s', u'bob')
+        x_conn.execute('INSERT INTO x (col1) VALUES (%s)', u'⚑☃❄')
+        rows = x_conn.query('SELECT * FROM x WHERE col1=%s', u'⚑☃❄')
         assert len(rows) == 1
-        assert rows[0].col1 == 'bob'
+        assert rows[0].col1 == '⚑☃❄'
 
-        rows = x_conn.query('SELECT * FROM x WHERE col1 in (%s)', [u'bob', 'jones'])
+        rows = x_conn.query('SELECT * FROM x WHERE col1 in (%s)', [u'⚑☃❄', 'jones'])
         assert len(rows) == 1
-        assert rows[0].col1 == 'bob'
+        assert rows[0].col1 == '⚑☃❄'
 
-        rows = x_conn.query('SELECT * FROM x WHERE col1=%(col1)s', col1=u'bob')
+        rows = x_conn.query('SELECT * FROM x WHERE col1=%(col1)s', col1=u'⚑☃❄')
         assert len(rows) == 1
-        assert rows[0].col1 == 'bob'
+        assert rows[0].col1 == '⚑☃❄'
 
     def test_queryparams(self, x_conn):
         x_conn.execute('INSERT INTO x (value) VALUES (1), (2), (3)')

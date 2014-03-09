@@ -267,7 +267,9 @@ class TaskHandler(object):
         if self.finished != 0:
             raise AlreadyFinished()
 
-        self._save(result=result, finished=datetime.utcnow())
+        data = copy.deepcopy(self.data)
+        data['result'] = result
+        self._save(data=data, finished=datetime.utcnow())
 
     def requeue(self):
         if self._running_steps() != 0:
@@ -339,6 +341,12 @@ class TaskHandler(object):
         yield
         self.stop_step(step_name)
 
+    def refresh(self):
+        self._refresh()
+
+    def save(self):
+        self._save()
+
     ###############################
     # Private Interface
 
@@ -376,7 +384,7 @@ class TaskHandler(object):
         self.started = row.started
         self.finished = row.finished
 
-    def _save(self, result=None, finished=None, steps=None):
+    def _save(self, finished=None, steps=None, data=None):
         with self._db_conn() as conn:
             success = conn.query('''
                 UPDATE %s
@@ -384,7 +392,7 @@ class TaskHandler(object):
                     last_contact=UNIX_TIMESTAMP(),
                     steps=%%(steps)s,
                     finished=%%(finished)s,
-                    data::$result=%%(result)s
+                    data=%%(data)s
                 WHERE
                     id = %%(task_id)s
                     AND execution_id = %%(execution_id)s
@@ -395,7 +403,7 @@ class TaskHandler(object):
                 ttl=self._queue.execution_ttl,
                 steps=json.dumps(steps if steps is not None else self.steps),
                 finished=finished if finished is not None else self.finished,
-                result=result if result is not None else self.data.get('result', None))
+                data=json.dumps(data if data is not None else self.data))
 
         if success != 1:
             raise TaskDoesNotExist()
@@ -404,5 +412,5 @@ class TaskHandler(object):
                 self.steps = steps
             if finished is not None:
                 self.finished = finished
-            if result is not None:
-                self.data['result'] = result
+            if data is not None:
+                self.data = data
