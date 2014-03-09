@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import pytest
+import time
 from memsql.common import database
 
 def test_connection_open(test_db_conn):
@@ -32,7 +33,7 @@ class TestQueries(object):
     def x_conn(self, request, test_db_args, test_db_database):
         conn = database.connect(**test_db_args)
         conn.execute('CREATE DATABASE IF NOT EXISTS %s' % test_db_database)
-        conn.execute('USE %s' % test_db_database)
+        conn.select_db(test_db_database)
 
         def cleanup():
             conn.execute('DROP DATABASE %s' % test_db_database)
@@ -140,3 +141,16 @@ class TestQueries(object):
 
     def test_single_format(self, x_conn):
         x_conn.query("select * from x where col1 LIKE '%'")
+
+    def test_ensure_connected(self, x_conn):
+        old = x_conn.max_idle_time
+        before_db = x_conn._db
+
+        try:
+            x_conn.max_idle_time = 0
+            time.sleep(1)
+            x_conn.query("select * from x")
+
+            assert x_conn._db != before_db
+        finally:
+            x_conn.max_idle_time = old

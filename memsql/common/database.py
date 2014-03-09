@@ -38,7 +38,6 @@ class Connection(object):
     """
     def __init__(self, host, port=3306, database="information_schema", user=None, password=None,
                  max_idle_time=7 * 3600):
-        self.database = database
         self.max_idle_time = max_idle_time
 
         args = {
@@ -92,19 +91,13 @@ class Connection(object):
             self.close()
             self._db = conn
 
+    def select_db(self, database):
+        self._db.select_db(database)
+        self._db_args['db'] = database
+
     def ping(self):
         """ Ping the server """
         return self._db.ping()
-
-    def _ensure_connected(self):
-        # Mysql by default closes client connections that are idle for
-        # 8 hours, but the client library does not report this fact until
-        # you try to perform a query and it fails.  Protect against this
-        # case by preemptively closing and reopening the connection
-        # if it has been idle for too long (7 hours by default).
-        if (self._db is None or (time.time() - self._last_use_time > self.max_idle_time)):
-            self.reconnect()
-        self._last_use_time = time.time()
 
     def debug_query(self, query, *parameters, **kwparameters):
         return self._query(query, parameters, kwparameters, debug=True)
@@ -158,8 +151,19 @@ class Connection(object):
         if debug:
             print query
 
+        self._ensure_connected()
         self._db.query(query)
         self._rowcount = self._db.affected_rows()
+
+    def _ensure_connected(self):
+        # Mysql by default closes client connections that are idle for
+        # 8 hours, but the client library does not report this fact until
+        # you try to perform a query and it fails.  Protect against this
+        # case by preemptively closing and reopening the connection
+        # if it has been idle for too long (7 hours by default).
+        if (self._db is None or (time.time() - self._last_use_time > self.max_idle_time)):
+            self.reconnect()
+        self._last_use_time = time.time()
 
 class Row(OrderedDict):
     """A dict that allows for object-like property access syntax."""

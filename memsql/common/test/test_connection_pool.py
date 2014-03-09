@@ -89,8 +89,7 @@ def _fairy_queries_fixture(request, fairy, test_db_args, test_db_database):
 
 def test_fairy_queries(fairy, _fairy_queries_fixture, test_db_database):
     test_queries = TestQueries()
-
-    fairy.execute('USE %s' % test_db_database)
+    fairy.select_db(test_db_database)
 
     for attr in dir(test_queries):
         if attr.startswith('test_'):
@@ -153,7 +152,7 @@ def test_exception_remapping(pool, db_args, test_db_database):
     # other programmer errors should not be mapped
     fairy = pool.connect(*db_args)
     fairy.query('CREATE DATABASE IF NOT EXISTS %s' % test_db_database)
-    fairy.query('USE %s' % test_db_database)
+    fairy.select_db(test_db_database)
     fairy.query('CREATE TABLE IF NOT EXISTS x (id BIGINT PRIMARY KEY)')
 
     with pytest.raises(_mysql.DatabaseError) as exc:
