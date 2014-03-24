@@ -109,6 +109,13 @@ class Connection(object):
         """
         return self._query(query, parameters, kwparameters)
 
+    def query_raw(self, query, *parameters, **kwparameters):
+        """
+        Query the connection and return the rows (or affected rows if not a
+        select query).  Mysql errors will be propogated as exceptions.
+        """
+        return self._query_raw(query, parameters, kwparameters)
+
     def get(self, query, *parameters, **kwparameters):
         """Returns the first row returned for the given query."""
         rows = self._query(query, parameters, kwparameters)
@@ -133,15 +140,22 @@ class Connection(object):
         self._result = self._db.store_result()
         return self._db.insert_id()
 
-    def _query(self, query, parameters, kwparameters, debug=False):
+    def _run_query(self, query, parameters, kwparameters, debug=False):
         self._execute(query, parameters, kwparameters, debug)
         self._result = self._db.use_result()
         if self._result is None:
             return self._rowcount
         fields = zip(*self._result.describe())[0]
         rows = list(self._result.fetch_row(0))
-        ret = SelectResult(fields, rows)
-        return ret
+        return fields, rows
+
+    def _query(self, query, parameters, kwparameters, debug=False):
+        fields, rows = self._run_query(query, parameters, kwparameters, debug)
+        return SelectResult(fields, rows)
+
+    def _query_raw(self, query, parameters, kwparameters, debug=False):
+        fields, rows = self._run_query(query, parameters, kwparameters, debug)
+        return [dict(zip(fields, row)) for row in rows]
 
     def _execute(self, query, parameters, kwparameters, debug=False):
         if parameters and kwparameters:
