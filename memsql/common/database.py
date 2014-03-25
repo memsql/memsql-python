@@ -3,11 +3,12 @@
 import _mysql
 import itertools
 import time
+import operator
 
 try:
-    from collections import OrderedDict
-except:
-    from ordereddict import OrderedDict
+    from thread import get_ident as _get_ident
+except ImportError:
+    from dummy_thread import get_ident as _get_ident
 
 from MySQLdb.converters import conversions
 
@@ -109,13 +110,6 @@ class Connection(object):
         """
         return self._query(query, parameters, kwparameters)
 
-    def query_raw(self, query, *parameters, **kwparameters):
-        """
-        Query the connection and return the rows (or affected rows if not a
-        select query).  Mysql errors will be propogated as exceptions.
-        """
-        return self._query_raw(query, parameters, kwparameters)
-
     def get(self, query, *parameters, **kwparameters):
         """Returns the first row returned for the given query."""
         rows = self._query(query, parameters, kwparameters)
@@ -140,22 +134,14 @@ class Connection(object):
         self._result = self._db.store_result()
         return self._db.insert_id()
 
-    def _run_query(self, query, parameters, kwparameters, debug=False):
+    def _query(self, query, parameters, kwparameters, debug=False):
         self._execute(query, parameters, kwparameters, debug)
         self._result = self._db.use_result()
         if self._result is None:
             return self._rowcount
         fields = zip(*self._result.describe())[0]
         rows = list(self._result.fetch_row(0))
-        return fields, rows
-
-    def _query(self, query, parameters, kwparameters, debug=False):
-        fields, rows = self._run_query(query, parameters, kwparameters, debug)
         return SelectResult(fields, rows)
-
-    def _query_raw(self, query, parameters, kwparameters, debug=False):
-        fields, rows = self._run_query(query, parameters, kwparameters, debug)
-        return [dict(zip(fields, row)) for row in rows]
 
     def _execute(self, query, parameters, kwparameters, debug=False):
         if parameters and kwparameters:
@@ -179,20 +165,107 @@ class Connection(object):
             self.reconnect()
         self._last_use_time = time.time()
 
-class Row(OrderedDict):
-    """A dict that allows for object-like property access syntax."""
+
+class Row(object):
+    """A fast, ordered, partially-immutable dictlike object (or objectlike dict)."""
+
+    def __init__(self, fields, values):
+        self._fields = fields
+        self._values = list(values)
+
     def __getattr__(self, name):
         try:
-            return self[name]
-        except KeyError:
+            return self._values[self._fields.index(name)]
+        except ValueError, IndexError:
             raise AttributeError(name)
+
+    def __getitem__(self, name):
+        try:
+            return self._values[self._fields.index(name)]
+        except ValueError, IndexError:
+            raise KeyError(name)
+
+    def __setitem__(self, name, value):
+        try:
+            self._values[self._fields.index(name)] = value
+        except ValueError, IndexError:
+            self._fields += (name,)
+            self._values += (value,)
+
+    def __contains__(self, name):
+        return name in self._fields
+
+    has_key = __contains__
+
+    def __sizeof__(self, name):
+        return len(self._fields)
+
+    def __iter__(self):
+        return self._fields.__iter__()
+
+    def __len__(self):
+        return self._fields.__len__()
+
+    def keys(self):
+        return list(self._fields)
+
+    def values(self):
+        return list(self._values)
+
+    def items(self):
+        return zip(self._fields, self._values)
+
+    def iterkeys(self):
+        return iter(self._fields)
+
+    def itervalues(self):
+        return iter(self._values)
+
+    def iteritems(self):
+        for i, key in enumerate(self._fields):
+            yield (key, self._values[i])
+
+    def __eq__(self, other):
+        if isinstance(other, Row):
+            return dict.__eq__(dict(self.iteritems()), other) and all(itertools.imap(operator.eq, self, other))
+        return dict.__eq__(dict(self.iteritems()), other)
+
+    def __ne__(self, other):
+        return not self == other
+
+    def __repr__(self, _repr_running={}):
+        call_key = id(self), _get_ident()
+        if call_key in _repr_running:
+            return '...'
+        _repr_running[call_key] = 1
+        try:
+            if not self:
+                return '%s()' % (self.__class__.__name__,)
+            return '%s(%r)' % (self.__class__.__name__, self.items())
+        finally:
+            del _repr_running[call_key]
+
+    ## for simplejson.dumps()
+    def _asdict(self):
+        return dict(self)
+
+    def nope(self, *args, **kwargs):
+        raise NotImplementedError('This object is partially immutable. To modify it, call "foo = dict(foo)" first.')
+
+    update = nope
+    pop = nope
+    setdefault = nope
+    fromkeys = nope
+    clear = nope
+    __delitem__ = nope
+    __reversed__ = nope
 
 class SelectResult(list):
     def __init__(self, fieldnames, rows):
-        self.fieldnames = fieldnames
+        self.fieldnames = tuple(fieldnames)
         self.rows = rows
 
-        data = [Row(itertools.izip(self.fieldnames, row)) for row in self.rows]
+        data = [Row(self.fieldnames, row) for row in self.rows]
         list.__init__(self, data)
 
     def width(self):
