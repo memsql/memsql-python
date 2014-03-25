@@ -84,5 +84,10 @@ def test_result_order():
         assert dict(row) == dict(ordered)
         assert len(row) == len(ordered)
 
+        assert row.get('cloud') == reference.get('cloud')
+        assert row.get('cloud') == ordered.get('cloud')
+        assert row.get('NOPE', 1) == reference.get('NOPE', 1)
+        assert row.get('NOPE', 1) == ordered.get('NOPE', 1)
+
         assert json.dumps(row, sort_keys=True) == json.dumps(reference, sort_keys=True)
         assert json.dumps(row, sort_keys=True) == json.dumps(ordered, sort_keys=True)

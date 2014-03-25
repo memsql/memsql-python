@@ -209,6 +209,12 @@ class Row(object):
     def keys(self):
         return list(self._fields)
 
+    def get(self, name, default=None):
+        try:
+            return self.__getitem__(name)
+        except KeyError:
+            return default
+
     def values(self):
         return list(self._values)
 
