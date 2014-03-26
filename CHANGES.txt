@@ -1,3 +1,9 @@
+2014-03-26 Version 2.11.0
+
+    * Improved performance of the Row class
+        * Semi-mutable
+        * Mostly backwards compat, but certain delete key operations will fail
+
 2014-03-12 Version 2.10.4
 
     * Added query_builder module to help write complex SQL queries.
