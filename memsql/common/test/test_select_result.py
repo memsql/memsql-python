@@ -3,7 +3,11 @@ from memsql.common import database
 import random
 import pytest
 import simplejson as json
-from collections import OrderedDict
+
+try:
+    from collections import OrderedDict
+except:
+    from ordereddict import OrderedDict
 
 FIELDS = ['l\u203pez', 'ಠ_ಠ', 'cloud', 'moon', 'water', 'computer', 'school', 'network',
           'hammer', 'walking', 'mediocre', 'literature', 'chair', 'two', 'window', 'cords', 'musical',
