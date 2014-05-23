@@ -2,7 +2,7 @@ import pytest
 from memsql.common import database
 import os
 
-host = os.environ.get('MEMSQL_PYTHON_TEST_HOST', 'leaf-1.cs.memcompute.com')
+host = os.environ.get('MEMSQL_PYTHON_TEST_HOST', 'x.memcompute.com')
 
 @pytest.fixture(scope="module")
 def test_db_database():
