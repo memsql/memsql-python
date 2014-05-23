@@ -5,6 +5,7 @@ import random
 import uuid
 import copy
 import types
+import calendar
 from datetime import datetime
 from contextlib import contextmanager
 
@@ -269,7 +270,7 @@ class TaskHandler(object):
 
         data = copy.deepcopy(self.data)
         data['result'] = result
-        self._save(data=data, finished=datetime.utcnow())
+        self._save(data=data, finished=calendar.timegm(datetime.utcnow().timetuple()))
 
     def requeue(self):
         if self._running_steps() != 0:

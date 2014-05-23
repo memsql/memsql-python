@@ -199,8 +199,13 @@ def test_finished_basic(queue):
         with pytest.raises(sql_step_queue.StepRunning):
             handler.finish()
 
+    assert isinstance(handler.finished, (int, long))
+    assert handler.finished == 0
+
     handler.finish()
 
+    assert isinstance(handler.finished, (int, long))
+    assert handler.finished != 0
     assert handler.data['result'] == 'success'
     assert not handler.valid()
 
