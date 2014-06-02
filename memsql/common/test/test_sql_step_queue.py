@@ -232,8 +232,6 @@ def test_timeout_fails(queue):
     assert not handler.valid()
 
     with pytest.raises(sql_step_queue.TaskDoesNotExist):
-        handler.ping()
-    with pytest.raises(sql_step_queue.TaskDoesNotExist):
         handler.finish()
     with pytest.raises(sql_step_queue.TaskDoesNotExist):
         handler.start_step('asdf')
@@ -251,8 +249,6 @@ def test_requeue_fails(queue):
     handler.requeue()
     assert not handler.valid()
 
-    with pytest.raises(sql_step_queue.TaskDoesNotExist):
-        handler.ping()
     with pytest.raises(sql_step_queue.TaskDoesNotExist):
         handler.finish()
     with pytest.raises(sql_step_queue.TaskDoesNotExist):

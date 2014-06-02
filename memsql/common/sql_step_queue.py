@@ -247,7 +247,7 @@ class TaskHandler(object):
             raise AlreadyFinished()
 
         with self._db_conn() as conn:
-            success = conn.query('''
+            conn.execute('''
                 UPDATE %s
                 SET last_contact=UNIX_TIMESTAMP()
                 WHERE
@@ -258,9 +258,6 @@ class TaskHandler(object):
                 task_id=self.task_id,
                 execution_id=self.execution_id,
                 ttl=self._queue.execution_ttl)
-
-        if success != 1:
-            raise TaskDoesNotExist()
 
     def finish(self, result='success'):
         if self._running_steps() != 0:
