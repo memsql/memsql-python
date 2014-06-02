@@ -1,3 +1,7 @@
+2014-06-02 Version 2.11.2
+
+    * Fixed bug in SQLStepQueue
+
 2014-05-23 Version 2.11.1
 
     * Fixed bug in SQLStepQueue
