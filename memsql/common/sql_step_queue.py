@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS %(table_name)s (
 
     started INT DEFAULT 0 NOT NULL,
     last_contact INT DEFAULT 0 NOT NULL,
+    update_count INT DEFAULT 0 NOT NULL,
     finished INT DEFAULT 0 NOT NULL,
 
     result AS data::$result PERSISTED VARCHAR(255),
@@ -75,7 +76,7 @@ class SQLStepQueue(sql_utility.SQLUtility):
         """ Enqueue task with specified data. """
         jsonified_data = json.dumps(data)
         with self._db_conn() as conn:
-            conn.execute(
+            return conn.execute(
                 'INSERT INTO %s (created, data) VALUES (UNIX_TIMESTAMP(), %%(data)s)' % self.table_name,
                 data=jsonified_data
             )
@@ -113,6 +114,7 @@ class SQLStepQueue(sql_utility.SQLUtility):
                 SET
                     execution_id = 0,
                     last_contact = UNIX_TIMESTAMP(),
+                    update_count = update_count + 1,
                     steps = '[]',
                     started = UNIX_TIMESTAMP(),
                     finished = UNIX_TIMESTAMP(),
@@ -129,6 +131,9 @@ class SQLStepQueue(sql_utility.SQLUtility):
                 ttl=self.execution_ttl)
 
         return num_affected
+
+    def checkout(self, task_id, execution_id):
+        return TaskHandler(execution_id=execution_id, task_id=task_id, queue=self)
 
     ###############################
     # Private Interface
@@ -175,6 +180,7 @@ class SQLStepQueue(sql_utility.SQLUtility):
                         SET
                             execution_id = %%(execution_id)s,
                             last_contact = UNIX_TIMESTAMP(),
+                            update_count = update_count + 1,
                             started = UNIX_TIMESTAMP(),
                             steps = '[]'
                         WHERE
@@ -247,9 +253,11 @@ class TaskHandler(object):
             raise AlreadyFinished()
 
         with self._db_conn() as conn:
-            conn.execute('''
+            success = conn.query('''
                 UPDATE %s
-                SET last_contact=UNIX_TIMESTAMP()
+                SET
+                    last_contact=UNIX_TIMESTAMP(),
+                    update_count=update_count + 1
                 WHERE
                     id = %%(task_id)s
                     AND execution_id = %%(execution_id)s
@@ -258,6 +266,9 @@ class TaskHandler(object):
                 task_id=self.task_id,
                 execution_id=self.execution_id,
                 ttl=self._queue.execution_ttl)
+
+        if success != 1:
+            raise TaskDoesNotExist()
 
     def finish(self, result='success'):
         if self._running_steps() != 0:
@@ -280,6 +291,7 @@ class TaskHandler(object):
                 UPDATE %s
                 SET
                     last_contact=0,
+                    update_count=update_count + 1,
                     started=0,
                     steps=NULL,
                     execution_id=NULL,
@@ -388,6 +400,7 @@ class TaskHandler(object):
                 UPDATE %s
                 SET
                     last_contact=UNIX_TIMESTAMP(),
+                    update_count=update_count + 1,
                     steps=%%(steps)s,
                     finished=%%(finished)s,
                     data=%%(data)s

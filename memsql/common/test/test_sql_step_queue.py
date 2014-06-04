@@ -149,6 +149,13 @@ def test_no_steal(queue):
     assert queue.start() is None
 
 @memsql_required
+def test_enqueue_returns_id(queue):
+    task_id = queue.enqueue({})
+    task = queue.start()
+
+    assert task.task_id == task_id
+
+@memsql_required
 def test_auto_requeue(queue):
     queue.execution_ttl = 1
 
