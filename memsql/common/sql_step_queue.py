@@ -7,6 +7,7 @@ import copy
 import types
 import calendar
 from datetime import datetime
+from dateutil import parser
 from contextlib import contextmanager
 
 PRIMARY_TABLE = """\
@@ -342,6 +343,7 @@ class TaskHandler(object):
             raise StepAlreadyFinished()
 
         step_data['stop'] = datetime.utcnow()
+
         step_data['duration'] = util.timedelta_total_seconds(step_data['stop'] - step_data['start'])
         self._save(steps=steps)
 
@@ -390,9 +392,18 @@ class TaskHandler(object):
 
         self.task_id = row.id
         self.data = json.loads(row.data)
-        self.steps = json.loads(row.steps)
+        self.steps = self._load_steps(json.loads(row.steps))
         self.started = row.started
         self.finished = row.finished
+
+    def _load_steps(self, raw_steps):
+        """ load steps -> basically load all the datetime isoformats into datetimes """
+        for step in raw_steps:
+            if 'start' in step:
+                step['start'] = parser.parse(step['start'])
+            if 'stop' in step:
+                step['stop'] = parser.parse(step['stop'])
+        return raw_steps
 
     def _save(self, finished=None, steps=None, data=None):
         with self._db_conn() as conn:

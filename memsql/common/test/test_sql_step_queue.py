@@ -3,6 +3,7 @@ import time
 import threading
 from memsql.common import sql_step_queue, database, exceptions
 from memsql.common.test.thread_monitor import ThreadMonitor
+from datetime import datetime
 
 memsql_required = pytest.mark.skipif(
     "os.environ.get('TRAVIS') == 'true'",
@@ -154,6 +155,20 @@ def test_enqueue_returns_id(queue):
     task = queue.start()
 
     assert task.task_id == task_id
+
+@memsql_required
+def test_steps_survive_refresh(queue):
+    task_id = queue.enqueue({})
+    task = queue.start()
+
+    task.start_step('test')
+    assert isinstance(task.steps[0]['start'], datetime)
+    task.refresh()
+    assert isinstance(task.steps[0]['start'], datetime)
+    task.stop_step('test')
+    assert isinstance(task.steps[0]['stop'], datetime)
+    task.refresh()
+    assert isinstance(task.steps[0]['stop'], datetime)
 
 @memsql_required
 def test_auto_requeue(queue):

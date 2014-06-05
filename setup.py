@@ -83,7 +83,7 @@ setup(
         'memsql.perf',
     ],
     zip_safe=False,
-    install_requires=['MySQL-python==1.2.5', 'wraptor', 'simplejson'],
+    install_requires=['MySQL-python==1.2.5', 'wraptor', 'simplejson', 'python-dateutil==2.2'],
     tests_require=['ordereddict', 'pytest', 'mock', 'pytest-xdist'],
     cmdclass={ 'test': PyTest },
 )

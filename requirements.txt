@@ -2,3 +2,4 @@ ordereddict
 MySQL-python==1.2.5
 wraptor
 simplejson
+python-dateutil==2.2
