@@ -1,3 +1,8 @@
+2014-06-06 Version 2.12.2
+
+    * Refactor SQLStepQueue into multiple files - still backwards compat from an import perspective
+    * Allow user to pass in different TaskHandler class
+
 2014-06-05 Version 2.12.1
 
     * When refreshing a SQLStepQueue task we need to parse step start/stop times as datetime's
