@@ -80,6 +80,7 @@ setup(
     packages=[
         'memsql',
         'memsql.common',
+        'memsql.common.sql_step_queue',
         'memsql.perf',
     ],
     zip_safe=False,
