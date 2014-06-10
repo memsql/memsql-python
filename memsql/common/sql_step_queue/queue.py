@@ -3,6 +3,7 @@ import time
 import random
 import uuid
 import types
+from datetime import datetime
 
 from memsql.common import json
 from memsql.common import sql_utility
@@ -12,17 +13,17 @@ from memsql.common.sql_step_queue.task_handler import TaskHandler
 PRIMARY_TABLE = """\
 CREATE TABLE IF NOT EXISTS %(table_name)s (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    created INT NOT NULL,
+    created DATETIME NOT NULL,
 
     data JSON,
 
     execution_id CHAR(32) DEFAULT NULL,
     steps JSON,
 
-    started INT DEFAULT 0 NOT NULL,
-    last_contact INT DEFAULT 0 NOT NULL,
-    update_count INT DEFAULT 0 NOT NULL,
-    finished INT DEFAULT 0 NOT NULL,
+    started DATETIME,
+    last_contact DATETIME,
+    update_count INT UNSIGNED DEFAULT 0 NOT NULL,
+    finished DATETIME,
 
     result AS data::$result PERSISTED VARCHAR(255),
 
@@ -57,7 +58,8 @@ class SQLStepQueue(sql_utility.SQLUtility):
         jsonified_data = json.dumps(data)
         with self._db_conn() as conn:
             return conn.execute(
-                'INSERT INTO %s (created, data) VALUES (UNIX_TIMESTAMP(), %%(data)s)' % self.table_name,
+                'INSERT INTO %s (created, data) VALUES (%%(created)s, %%(data)s)' % self.table_name,
+                created=datetime.utcnow(),
                 data=jsonified_data
             )
 
@@ -93,20 +95,21 @@ class SQLStepQueue(sql_utility.SQLUtility):
                 UPDATE %s
                 SET
                     execution_id = 0,
-                    last_contact = UNIX_TIMESTAMP(),
+                    last_contact = %%(now)s,
                     update_count = update_count + 1,
                     steps = '[]',
-                    started = UNIX_TIMESTAMP(),
-                    finished = UNIX_TIMESTAMP(),
+                    started = %%(now)s,
+                    finished = %%(now)s,
                     data::$result = %%(result)s
                 WHERE
-                    finished = 0
+                    finished IS NULL
                     AND (
                         execution_id IS NULL
-                        OR last_contact <= UNIX_TIMESTAMP() - %%(ttl)s
+                        OR last_contact <= %%(now)s - INTERVAL %%(ttl)s SECOND
                     )
                     %s
             ''' % (self.table_name, extra_predicate_sql),
+                now=datetime.utcnow(),
                 result=result,
                 ttl=self.execution_ttl)
 
@@ -127,15 +130,16 @@ class SQLStepQueue(sql_utility.SQLUtility):
                     %s
                 FROM %s
                 WHERE
-                    finished = 0
+                    finished IS NULL
                     AND (
                         execution_id IS NULL
-                        OR last_contact <= UNIX_TIMESTAMP() - %%(ttl)s
+                        OR last_contact <= %%(now)s - INTERVAL %%(ttl)s SECOND
                     )
                     %s
                 ORDER BY created ASC
                 LIMIT %%(limit)s
             ''' % (projection, self.table_name, extra_predicate_sql),
+                now=datetime.utcnow(),
                 ttl=self.execution_ttl,
                 limit=sys.maxint if limit is None else limit)
         return result
@@ -159,19 +163,20 @@ class SQLStepQueue(sql_utility.SQLUtility):
                         UPDATE %s
                         SET
                             execution_id = %%(execution_id)s,
-                            last_contact = UNIX_TIMESTAMP(),
+                            last_contact = %%(now)s,
                             update_count = update_count + 1,
-                            started = UNIX_TIMESTAMP(),
+                            started = %%(now)s,
                             steps = '[]'
                         WHERE
                             id = %%(task_id)s
-                            AND finished = 0
+                            AND finished IS NULL
                             AND (
                                 execution_id IS NULL
-                                OR last_contact <= UNIX_TIMESTAMP() - %%(ttl)s
+                                OR last_contact <= %%(now)s - INTERVAL %%(ttl)s SECOND
                             )
                             %s
                     ''' % (self.table_name, extra_predicate_sql),
+                        now=datetime.utcnow(),
                         execution_id=execution_id,
                         task_id=possible_task.id,
                         ttl=self.execution_ttl)

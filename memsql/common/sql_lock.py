@@ -2,13 +2,14 @@ from memsql.common.connection_pool import MySQLError
 from memsql.common import errorcodes, sql_utility
 import time
 import uuid
+from datetime import datetime
 
 LOCK_TABLE = """\
 CREATE TABLE IF NOT EXISTS %(name)s (
     id VARCHAR(255) PRIMARY KEY,
     lock_hash BINARY(32),
     owner VARCHAR(1024),
-    last_contact TIMESTAMP DEFAULT NOW(),
+    last_contact DATETIME,
     expiry INT
 )"""
 
@@ -44,14 +45,14 @@ class SQLLockManager(sql_utility.SQLUtility):
             with self._db_conn() as conn:
                 conn.execute('''
                     DELETE FROM %(table_name)s
-                    WHERE last_contact <= NOW() - expiry
-                ''' % { 'table_name': self.table_name })
+                    WHERE last_contact <= %%s - INTERVAL expiry SECOND
+                ''' % { 'table_name': self.table_name }, datetime.utcnow())
 
                 lock_hash = uuid.uuid1().hex
                 conn.execute('''
-                    INSERT INTO %s (id, lock_hash, owner, expiry)
-                    VALUES (%%s, %%s, %%s, %%s)
-                ''' % self.table_name, lock_id, lock_hash, owner, expiry)
+                    INSERT INTO %s (id, lock_hash, owner, expiry, last_contact)
+                    VALUES (%%s, %%s, %%s, %%s, %%s)
+                ''' % self.table_name, lock_id, lock_hash, owner, expiry, datetime.utcnow())
 
                 return SQLLock(lock_id=lock_id, lock_hash=lock_hash, owner=owner, manager=self)
 
@@ -76,9 +77,9 @@ class SQLLock(object):
         with self._db_conn() as conn:
             row = conn.get('''
                 SELECT
-                    (lock_hash=%%s && last_contact > NOW() - expiry) AS valid
+                    (lock_hash=%%s && last_contact > %%s - INTERVAL expiry SECOND) AS valid
                 FROM %s WHERE id = %%s
-            ''' % self._manager.table_name, self._lock_hash, self._lock_id)
+            ''' % self._manager.table_name, self._lock_hash, datetime.utcnow(), self._lock_id)
 
         return bool(row is not None and row.valid)
 
@@ -87,9 +88,9 @@ class SQLLock(object):
         with self._db_conn() as conn:
             affected_rows = conn.query('''
                 UPDATE %s
-                SET last_contact=NOW()
+                SET last_contact=%%s
                 WHERE id = %%s AND lock_hash = %%s
-            ''' % self._manager.table_name, self._lock_id, self._lock_hash)
+            ''' % self._manager.table_name, datetime.utcnow(), self._lock_id, self._lock_hash)
 
         return bool(affected_rows == 1)
 

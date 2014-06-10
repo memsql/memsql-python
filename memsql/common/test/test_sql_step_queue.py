@@ -64,7 +64,7 @@ def test_start_block(queue):
     data = { 'hello': 'world' }
 
     def _test():
-        handler = queue.start(block=True, timeout=1)
+        handler = queue.start(block=True, timeout=2)
         assert handler is not None
         assert handler.data == data
 
@@ -158,7 +158,7 @@ def test_enqueue_returns_id(queue):
 
 @memsql_required
 def test_steps_survive_refresh(queue):
-    task_id = queue.enqueue({})
+    queue.enqueue({})
     task = queue.start()
 
     task.start_step('test')
@@ -177,7 +177,7 @@ def test_auto_requeue(queue):
     queue.enqueue({})
     handler = queue.start()
 
-    time.sleep(1.2)
+    time.sleep(1.5)
     h2 = queue.start()
 
     assert h2 is not None
@@ -212,8 +212,6 @@ def test_start_stop_step(queue):
 
 @memsql_required
 def test_finished_basic(queue):
-    queue.execution_ttl = 1
-
     queue.enqueue({})
     handler = queue.start()
 
@@ -221,13 +219,11 @@ def test_finished_basic(queue):
         with pytest.raises(sql_step_queue.StepRunning):
             handler.finish()
 
-    assert isinstance(handler.finished, (int, long))
-    assert handler.finished == 0
+    assert handler.finished is None
 
     handler.finish()
 
-    assert isinstance(handler.finished, (int, long))
-    assert handler.finished != 0
+    assert isinstance(handler.finished, datetime)
     assert handler.data['result'] == 'success'
     assert not handler.valid()
 

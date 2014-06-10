@@ -15,7 +15,7 @@ class TaskHandler(object):
         self._queue = queue
 
         self.started = 0
-        self.finished = 0
+        self.finished = None
         self.data = None
         self.steps = None
 
@@ -26,17 +26,18 @@ class TaskHandler(object):
 
     def valid(self):
         """ Check to see if we are still active. """
-        if self.finished != 0:
+        if self.finished is not None:
             return False
 
         with self._db_conn() as conn:
             row = conn.get('''
-                SELECT (last_contact > UNIX_TIMESTAMP() - %%(ttl)s) AS valid
+                SELECT (last_contact > %%(now)s - INTERVAL %%(ttl)s SECOND) AS valid
                 FROM %s
                 WHERE
                     id = %%(task_id)s
                     AND execution_id = %%(execution_id)s
             ''' % self._queue.table_name,
+                now=datetime.utcnow(),
                 ttl=self._queue.execution_ttl,
                 task_id=self.task_id,
                 execution_id=self.execution_id)
@@ -45,20 +46,21 @@ class TaskHandler(object):
 
     def ping(self):
         """ Notify the queue that this task is still active. """
-        if self.finished != 0:
+        if self.finished is not None:
             raise AlreadyFinished()
 
         with self._db_conn() as conn:
             success = conn.query('''
                 UPDATE %s
                 SET
-                    last_contact=UNIX_TIMESTAMP(),
+                    last_contact=%%(now)s,
                     update_count=update_count + 1
                 WHERE
                     id = %%(task_id)s
                     AND execution_id = %%(execution_id)s
-                    AND last_contact > UNIX_TIMESTAMP() - %%(ttl)s
+                    AND last_contact > %%(now)s - INTERVAL %%(ttl)s SECOND
             ''' % self._queue.table_name,
+                now=datetime.utcnow(),
                 task_id=self.task_id,
                 execution_id=self.execution_id,
                 ttl=self._queue.execution_ttl)
@@ -69,35 +71,36 @@ class TaskHandler(object):
     def finish(self, result='success'):
         if self._running_steps() != 0:
             raise StepRunning()
-        if self.finished != 0:
+        if self.finished is not None:
             raise AlreadyFinished()
 
         data = copy.deepcopy(self.data)
         data['result'] = result
-        self._save(data=data, finished=calendar.timegm(datetime.utcnow().timetuple()))
+        self._save(data=data, finished=datetime.utcnow())
 
     def requeue(self):
         if self._running_steps() != 0:
             raise StepRunning()
-        if self.finished != 0:
+        if self.finished is not None:
             raise AlreadyFinished()
 
         with self._db_conn() as conn:
             success = conn.query('''
                 UPDATE %s
                 SET
-                    last_contact=0,
+                    last_contact=NULL,
                     update_count=update_count + 1,
-                    started=0,
+                    started=NULL,
                     steps=NULL,
                     execution_id=NULL,
-                    finished=0,
+                    finished=NULL,
                     data=JSON_DELETE_KEY(data, 'result')
                 WHERE
                     id = %%(task_id)s
                     AND execution_id = %%(execution_id)s
-                    AND last_contact > UNIX_TIMESTAMP() - %%(ttl)s
+                    AND last_contact > %%(now)s - INTERVAL %%(ttl)s SECOND
             ''' % self._queue.table_name,
+                now=datetime.utcnow(),
                 task_id=self.task_id,
                 execution_id=self.execution_id,
                 ttl=self._queue.execution_ttl)
@@ -107,7 +110,7 @@ class TaskHandler(object):
 
     def start_step(self, step_name):
         """ Start a step. """
-        if self.finished != 0:
+        if self.finished is not None:
             raise AlreadyFinished()
 
         step_data = self._get_step(step_name)
@@ -126,7 +129,7 @@ class TaskHandler(object):
 
     def stop_step(self, step_name):
         """ Stop a step. """
-        if self.finished != 0:
+        if self.finished is not None:
             raise AlreadyFinished()
 
         steps = copy.deepcopy(self.steps)
@@ -176,8 +179,9 @@ class TaskHandler(object):
                 WHERE
                     id = %%(task_id)s
                     AND execution_id = %%(execution_id)s
-                    AND last_contact > UNIX_TIMESTAMP() - %%(ttl)s
+                    AND last_contact > %%(now)s - INTERVAL %%(ttl)s SECOND
             ''' % self._queue.table_name,
+                now=datetime.utcnow(),
                 task_id=self.task_id,
                 execution_id=self.execution_id,
                 ttl=self._queue.execution_ttl)
@@ -205,7 +209,7 @@ class TaskHandler(object):
             success = conn.query('''
                 UPDATE %s
                 SET
-                    last_contact=UNIX_TIMESTAMP(),
+                    last_contact=%%(now)s,
                     update_count=update_count + 1,
                     steps=%%(steps)s,
                     finished=%%(finished)s,
@@ -213,8 +217,9 @@ class TaskHandler(object):
                 WHERE
                     id = %%(task_id)s
                     AND execution_id = %%(execution_id)s
-                    AND last_contact > UNIX_TIMESTAMP() - %%(ttl)s
+                    AND last_contact > %%(now)s - INTERVAL %%(ttl)s SECOND
             ''' % self._queue.table_name,
+                now=datetime.utcnow(),
                 task_id=self.task_id,
                 execution_id=self.execution_id,
                 ttl=self._queue.execution_ttl,
