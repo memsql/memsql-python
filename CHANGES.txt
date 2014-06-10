@@ -1,3 +1,8 @@
+2014-06-09 Version 2.13.0
+
+    * Move to DATETIME and client side UTC timestamps
+    * Requires a full table migration for anything using sql_step_queue or sql_lock
+
 2014-06-06 Version 2.12.2
 
     * Refactor SQLStepQueue into multiple files - still backwards compat from an import perspective
