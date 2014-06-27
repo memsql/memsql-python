@@ -28,6 +28,9 @@ def test_query(test_db_conn):
 def test_ping(test_db_conn):
     test_db_conn.ping()
 
+def test_thread_id(test_db_conn):
+    assert isinstance(test_db_conn.thread_id(), int)
+
 class TestQueries(object):
     @pytest.fixture(scope="class")
     def x_conn(self, request, test_db_args, test_db_database):

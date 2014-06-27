@@ -100,6 +100,10 @@ class Connection(object):
         """ Ping the server """
         return self._db.ping()
 
+    def thread_id(self):
+        """ Retrieve the thread id for the current connection """
+        return self._db.thread_id()
+
     def debug_query(self, query, *parameters, **kwparameters):
         return self._query(query, parameters, kwparameters, debug=True)
 
