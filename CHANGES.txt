@@ -1,3 +1,7 @@
+2014-06-27 Version 2.13.1
+
+    * Expose thread_id method on database adapater
+
 2014-06-09 Version 2.13.0
 
     * Move to DATETIME and client side UTC timestamps
