@@ -6,6 +6,22 @@ from setuptools.command.test import test as TestCommand
 # get version
 from memsql import __version__
 
+import sys
+
+REQUIREMENTS = [
+    'wraptor',
+    'simplejson',
+    'python-dateutil==2.2',
+    'six==1.8.0'
+]
+
+if sys.version_info[0] == 3:
+    REQUIREMENTS.append('mysqlclient==1.3.2')
+elif sys.version_info[0] == 2:
+    REQUIREMENTS.append('MySQL-python==1.2.5')
+else:
+    assert False, "MemSQL-Python doesn't support python version %s" % sys.version
+
 class PyTest(TestCommand):
     user_options = [
         ('watch', 'w',
@@ -18,11 +34,14 @@ class PyTest(TestCommand):
          "Stop tests on first failure"),
         ('expression=', 'k',
          "Only run tests matching given expression"),
+        ('verbose', 'v',
+         "Print out all output as it happens"),
     ]
     boolean_options = ['watch']
 
     def initialize_options(self):
         self.watch = False
+        self.verbose = False
         self.pdb = False
         self.scan = None
         self.exitfirst = False
@@ -38,6 +57,8 @@ class PyTest(TestCommand):
         self.test_args = ['-v']
         if self.watch:
             self.test_args.append('-f')
+        if self.verbose:
+            self.test_args.append('-s')
         if self.pdb:
             self.test_args.append('--pdb')
         if self.exitfirst:
@@ -81,10 +102,9 @@ setup(
         'memsql',
         'memsql.common',
         'memsql.common.sql_step_queue',
-        'memsql.perf',
     ],
     zip_safe=False,
-    install_requires=['MySQL-python==1.2.5', 'wraptor', 'simplejson', 'python-dateutil==2.2'],
-    tests_require=['ordereddict', 'pytest', 'mock', 'pytest-xdist'],
+    install_requires=REQUIREMENTS,
+    tests_require=['pytest', 'mock','ordereddict==1.1'],
     cmdclass={ 'test': PyTest },
 )

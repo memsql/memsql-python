@@ -6,7 +6,7 @@ def simple_expression(joiner=', ', **fields):
     """
     expression, params = [], {}
 
-    for field_name, value in sorted(fields.iteritems(), key=lambda (n, v): n):
+    for field_name, value in sorted(fields.items(), key=lambda kv: kv[0]):
         key = '_QB_%s' % field_name
         expression.append('`%s`=%%(%s)s' % (field_name, key))
         params[key] = value
@@ -52,8 +52,7 @@ def __multi_insert(table_name, rows, replace=False):
 
     for i, row in enumerate(rows):
         key = '_QB_ROW_%d' % i
-        params[key] = [ v for c, v in sorted(row.iteritems(), key=lambda (c, v): cols.index(c)) ]
+        params[key] = [ v for c, v in sorted(row.items(), key=lambda kv: cols.index(kv[0])) ]
         sql.append('(%%(%s)s)' % key)
 
     return prefix + ', '.join(sql), params
-

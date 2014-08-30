@@ -64,7 +64,7 @@ def test_start_block(queue):
     data = { 'hello': 'world' }
 
     def _test():
-        handler = queue.start(block=True, timeout=2)
+        handler = queue.start(block=True, timeout=5)
         assert handler is not None
         assert handler.data == data
 
@@ -177,7 +177,7 @@ def test_auto_requeue(queue):
     queue.enqueue({})
     handler = queue.start()
 
-    time.sleep(1.5)
+    time.sleep(2)
     h2 = queue.start()
 
     assert h2 is not None

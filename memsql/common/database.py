@@ -1,22 +1,23 @@
 """A lightweight wrapper around _mysql."""
 
 import _mysql
-import itertools
 import time
 import operator
+import six
 
 try:
-    from thread import get_ident as _get_ident
+    from _thread import get_ident as _get_ident
 except ImportError:
-    from dummy_thread import get_ident as _get_ident
+    from thread import get_ident as _get_ident
 
-from MySQLdb.converters import conversions
+if six.PY3:
+    from memsql.common.conversions import CONVERSIONS
+else:
+    from MySQLdb.converters import conversions as CONVERSIONS
 
 MySQLError = _mysql.MySQLError
 OperationalError = _mysql.OperationalError
 DatabaseError = _mysql.DatabaseError
-
-encoders = dict([ (k, v) for k, v in conversions.items() if not isinstance(k, int) ])
 
 def connect(*args, **kwargs):
     return Connection(*args, **kwargs)
@@ -43,7 +44,7 @@ class Connection(object):
 
         args = {
             "db": database,
-            "conv": conversions
+            "conv": CONVERSIONS
         }
 
         if user is not None:
@@ -140,11 +141,13 @@ class Connection(object):
 
     def _query(self, query, parameters, kwparameters, debug=False):
         self._execute(query, parameters, kwparameters, debug)
+
         self._result = self._db.use_result()
         if self._result is None:
             return self._rowcount
-        fields = zip(*self._result.describe())[0]
-        rows = list(self._result.fetch_row(0))
+
+        fields = [ f[0] for f in self._result.describe() ]
+        rows = self._result.fetch_row(0)
         return SelectResult(fields, rows)
 
     def _execute(self, query, parameters, kwparameters, debug=False):
@@ -153,7 +156,7 @@ class Connection(object):
 
         query = escape_query(query, parameters or kwparameters)
         if debug:
-            print query
+            print(query)
 
         self._ensure_connected()
         self._db.query(query)
@@ -175,24 +178,24 @@ class Row(object):
 
     def __init__(self, fields, values):
         self._fields = fields
-        self._values = list(values)
+        self._values = values
 
     def __getattr__(self, name):
         try:
             return self._values[self._fields.index(name)]
-        except ValueError, IndexError:
+        except (ValueError, IndexError):
             raise AttributeError(name)
 
     def __getitem__(self, name):
         try:
             return self._values[self._fields.index(name)]
-        except ValueError, IndexError:
+        except (ValueError, IndexError):
             raise KeyError(name)
 
     def __setitem__(self, name, value):
         try:
             self._values[self._fields.index(name)] = value
-        except ValueError, IndexError:
+        except (ValueError, IndexError):
             self._fields += (name,)
             self._values += (value,)
 
@@ -210,35 +213,29 @@ class Row(object):
     def __len__(self):
         return self._fields.__len__()
 
-    def keys(self):
-        return list(self._fields)
-
     def get(self, name, default=None):
         try:
             return self.__getitem__(name)
         except KeyError:
             return default
 
+    def keys(self):
+        for field in iter(self._fields):
+            yield field
+
     def values(self):
-        return list(self._values)
+        for value in iter(self._values):
+            yield value
 
     def items(self):
-        return zip(self._fields, self._values)
-
-    def iterkeys(self):
-        return iter(self._fields)
-
-    def itervalues(self):
-        return iter(self._values)
-
-    def iteritems(self):
-        for i, key in enumerate(self._fields):
-            yield (key, self._values[i])
+        for item in zip(self._fields, self._values):
+            yield item
 
     def __eq__(self, other):
         if isinstance(other, Row):
-            return dict.__eq__(dict(self.iteritems()), other) and all(itertools.imap(operator.eq, self, other))
-        return dict.__eq__(dict(self.iteritems()), other)
+            return dict.__eq__(dict(self.items()), other) and all(map(operator.eq, self, other))
+        else:
+            return dict.__eq__(dict(self.items()), other)
 
     def __ne__(self, other):
         return not self == other
@@ -251,11 +248,11 @@ class Row(object):
         try:
             if not self:
                 return '%s()' % (self.__class__.__name__,)
-            return '%s(%r)' % (self.__class__.__name__, self.items())
+            return '%s(%r)' % (self.__class__.__name__, dict(self.items()))
         finally:
             del _repr_running[call_key]
 
-    ## for simplejson.dumps()
+    # for simplejson.dumps()
     def _asdict(self):
         return dict(self)
 
@@ -291,21 +288,18 @@ def escape_query(query, parameters):
         if isinstance(parameters, (list, tuple)):
             query = query % tuple(map(_escape, parameters))
         elif isinstance(parameters, dict):
-            query = query % dict(map(lambda (key, item): (key, _escape(item)), parameters.iteritems()))
+            params = {}
+            for key, val in parameters.items():
+                params[key] = _escape(val)
+
+            query = query % params
         else:
             assert False, 'not sure what to do with parameters of type %s' % type(parameters)
 
-    return _escape_unicode(query)
-
-def _escape_unicode(param):
-    if isinstance(param, unicode):
-        return param.encode('utf-8')
-    else:
-        return param
+    return query
 
 def _escape(param):
     if isinstance(param, (list, tuple)):
-        param = [_escape_unicode(p) for p in param]
-        return ','.join(_mysql.escape_sequence(param, encoders))
+        return ','.join(_mysql.escape_sequence(param, CONVERSIONS))
     else:
-        return _mysql.escape(_escape_unicode(param), encoders)
+        return _mysql.escape(param, CONVERSIONS)

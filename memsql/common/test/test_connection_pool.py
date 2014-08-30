@@ -1,6 +1,7 @@
 import pytest
 import mock
 import multiprocessing
+import six
 
 from memsql.common.test.test_database_adapters import TestQueries
 
@@ -32,7 +33,7 @@ def test_checkout(pool, test_key, db_args):
     assert fairy._key == test_key
 
     assert len(pool._connections) == 1
-    assert pool._connections.values()[0].qsize() == 0
+    assert list(pool._connections.values())[0].qsize() == 0
     assert len(pool._fairies) == 1
 
 def test_checkin(pool, fairy):
@@ -40,7 +41,7 @@ def test_checkin(pool, fairy):
 
     assert len(pool._fairies) == 0
     assert len(pool._connections) == 1
-    assert pool._connections.values()[0].qsize() == 1
+    assert list(pool._connections.values())[0].qsize() == 1
 
 def test_connection_reuse(pool, test_key, db_args):
     fairy = pool.connect(*db_args)
@@ -74,7 +75,7 @@ def test_fairy_expire(pool, test_key, db_args):
     fairy.close()
     assert len(pool._fairies) == 0
     assert len(pool._connections) == 1
-    assert pool._connections.values()[0].qsize() == 0
+    assert list(pool._connections.values())[0].qsize() == 0
 
 def test_fairy_reconnect(fairy):
     assert fairy.connected()
@@ -92,7 +93,7 @@ def test_fairy_queries(fairy, _fairy_queries_fixture, test_db_database):
     fairy.select_db(test_db_database)
 
     for attr in dir(test_queries):
-        if attr.startswith('test_'):
+        if attr.startswith('test_') and "bytes" not in attr:
             getattr(test_queries, attr)(fairy)
         fairy.execute('DELETE FROM x')
 
@@ -109,7 +110,7 @@ def test_fairy_execute(fairy):
 
 def test_fairy_execute_lastrowid(fairy):
     row_id = fairy.execute_lastrowid('SELECT 1')
-    assert isinstance(row_id, long)
+    assert isinstance(row_id, six.integer_types)
 
 @mock.patch('memsql.common.database.Connection')
 def test_socket_issues(mock_class, pool, db_args, test_key):

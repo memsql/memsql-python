@@ -1,7 +1,12 @@
-import _mysql, errno, Queue
+import _mysql, errno
 import multiprocessing
 import logging
 from memsql.common import database
+
+try:
+    import queue
+except ImportError:
+    import Queue as queue
 
 MySQLError = database.MySQLError
 QUEUE_SIZE = 128
@@ -29,7 +34,7 @@ class ConnectionPool(object):
         key = (host, port, user, password, database, current_proc.pid)
 
         if key not in self._connections:
-            self._connections[key] = Queue.Queue(maxsize=QUEUE_SIZE)
+            self._connections[key] = queue.Queue(maxsize=QUEUE_SIZE)
 
         fairy = _PoolConnectionFairy(key, self)
         fairy.connect()
@@ -38,7 +43,7 @@ class ConnectionPool(object):
 
     def checkin(self, fairy, key, conn, expire_connection=False):
         if key not in self._connections:
-            self._connections[key] = Queue.Queue(maxsize=QUEUE_SIZE)
+            self._connections[key] = queue.Queue(maxsize=QUEUE_SIZE)
 
         if expire_connection:
             try:
@@ -48,32 +53,34 @@ class ConnectionPool(object):
         else:
             try:
                 self._connections[key].put_nowait(conn)
-            except Queue.Full:
+            except queue.Full:
                 conn.close()
 
         if fairy in self._fairies:
             del(self._fairies[fairy])
 
     def close(self):
-        for fairy in self._fairies.keys():
+        for fairy in list(self._fairies.keys()):
             fairy.close()
-        for queue in self._connections.values():
+
+        for q in self._connections.values():
             while True:
                 try:
-                    conn = queue.get_nowait()
+                    conn = q.get_nowait()
                     conn.close()
-                except Queue.Empty:
+                except queue.Empty:
                     break
 
     def size(self):
         """ Returns the number of connections cached by the pool. """
-        return sum([q.qsize() for q in self._connections.values()]) + len(self._fairies)
+        return sum(q.qsize() for q in self._connections.values()) + len(self._fairies)
 
 class _PoolConnectionFairy(object):
     def __init__(self, key, pool):
         self._key = key
         self._pool = pool
         self._expired = False
+        self._conn = None
 
     def expire(self):
         self._expired = True
@@ -102,7 +109,7 @@ class _PoolConnectionFairy(object):
                     raise
             except _mysql.OperationalError as e:
                 # _mysql specific database connect issues, internal state issues
-                if hasattr(self, '_conn'):
+                if self._conn is not None:
                     self.__potential_connection_failure(e)
                 else:
                     self.__handle_connection_failure(e)
@@ -128,7 +135,7 @@ class _PoolConnectionFairy(object):
         self.expire()
 
         # build and raise the new consolidated exception
-        message = e.message
+        message = None
         if isinstance(e, _mysql.OperationalError) or (hasattr(e, 'args') and len(e.args) >= 2):
             err_num = e.args[0]
             message = e.args[1]
@@ -140,12 +147,12 @@ class _PoolConnectionFairy(object):
         raise PoolConnectionException(err_num, message, self._key)
 
     ##################
-    ## Wrap DB Api to deal with connection issues and so on in an intelligent way
+    # Wrap DB Api to deal with connection issues and so on in an intelligent way
 
     def connect(self):
         try:
             self._conn = self._pool._connections[self._key].get_nowait()
-        except Queue.Empty:
+        except queue.Empty:
             (host, port, user, password, db_name, pid) = self._key
             _connect = self.__wrap_errors(database.connect)
             self._conn = _connect(host=host, port=port, user=user, password=password, database=db_name)

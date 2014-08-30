@@ -48,7 +48,7 @@ class SQLLockManager(sql_utility.SQLUtility):
                     WHERE last_contact <= %%s - INTERVAL expiry SECOND
                 ''' % { 'table_name': self.table_name }, datetime.utcnow())
 
-                lock_hash = uuid.uuid1().hex
+                lock_hash = uuid.uuid1().hex.encode('utf8')
                 conn.execute('''
                     INSERT INTO %s (id, lock_hash, owner, expiry, last_contact)
                     VALUES (%%s, %%s, %%s, %%s, %%s)
@@ -56,7 +56,8 @@ class SQLLockManager(sql_utility.SQLUtility):
 
                 return SQLLock(lock_id=lock_id, lock_hash=lock_hash, owner=owner, manager=self)
 
-        except MySQLError as (errno, msg):
+        except MySQLError as err:
+            (errno, msg) = err.args
             if errno == errorcodes.ER_DUP_ENTRY:
                 return None
             else:

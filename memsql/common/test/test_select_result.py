@@ -6,10 +6,10 @@ import simplejson as json
 
 try:
     from collections import OrderedDict
-except:
+except ImportError:
     from ordereddict import OrderedDict
 
-FIELDS = ['l\u203pez', 'ಠ_ಠ', 'cloud', 'moon', 'water', 'computer', 'school', 'network',
+FIELDS = ['l\\u203pez', 'ಠ_ಠ', 'cloud', 'moon', 'water', 'computer', 'school', 'network',
           'hammer', 'walking', 'mediocre', 'literature', 'chair', 'two', 'window', 'cords', 'musical',
           'zebra', 'xylophone', 'penguin', 'home', 'dog', 'final', 'ink', 'teacher', 'fun', 'website',
           'banana', 'uncle', 'softly', 'mega', 'ten', 'awesome', 'attatch', 'blue', 'internet', 'bottle',
@@ -17,7 +17,7 @@ FIELDS = ['l\u203pez', 'ಠ_ಠ', 'cloud', 'moon', 'water', 'computer', 'school'
           'book', 'zooming', 'falling', 'evily', 'gamer', 'lid', 'juice', 'moniter', 'captain', 'bonding']
 
 def test_result_order():
-    raw_data = [[random.randint(1, 2**32) for _ in xrange(len(FIELDS))] for i in xrange(256)]
+    raw_data = [[random.randint(1, 2 ** 32) for _ in range(len(FIELDS))] for _ in range(256)]
     res = database.SelectResult(FIELDS, raw_data)
 
     for i, row in enumerate(res):
@@ -28,17 +28,17 @@ def test_result_order():
         assert doppel == row
         assert row == reference
         assert row == ordered
-        assert row.keys() == FIELDS
-        assert row.values() == raw_data[i]
+        assert list(row.keys()) == FIELDS
+        assert list(row.values()) == raw_data[i]
         assert sorted(row) == sorted(FIELDS)
-        assert row.items() == zip(FIELDS, raw_data[i])
-        assert list(row.itervalues()) == raw_data[i]
-        assert list(row.iterkeys()) == FIELDS
-        assert list(row.iteritems()) == zip(FIELDS, raw_data[i])
+        assert list(row.items()) == list(zip(FIELDS, raw_data[i]))
+        assert list(row.values()) == raw_data[i]
+        assert list(row.keys()) == FIELDS
+        assert list(row.items()) == list(zip(FIELDS, raw_data[i]))
 
         for f in FIELDS:
             assert f in row
-            assert row.has_key(f)
+            assert f in row
             assert row[f] == reference[f]
             assert row['cloud'] == reference['cloud']
             assert row[f] == ordered[f]

@@ -141,7 +141,7 @@ class SQLStepQueue(sql_utility.SQLUtility):
             ''' % (projection, self.table_name, extra_predicate_sql),
                 now=datetime.utcnow(),
                 ttl=self.execution_ttl,
-                limit=sys.maxint if limit is None else limit)
+                limit=sys.maxsize if limit is None else limit)
         return result
 
     def _dequeue_task(self, extra_predicate=None):
@@ -190,7 +190,7 @@ class SQLStepQueue(sql_utility.SQLUtility):
             return ''
 
         # if they don't have a supported format seq, wrap it for them
-        if not isinstance(extra_predicate[1], (types.ListType, types.DictType, types.TupleType)):
+        if not isinstance(extra_predicate[1], (list, dict, tuple)):
             extra_predicate = [extra_predicate[0], (extra_predicate[1], )]
 
         extra_predicate = database.escape_query(*extra_predicate)

@@ -4,6 +4,7 @@ import threading
 from memsql.common import database
 from memsql.common import sql_lock
 from memsql.common import exceptions
+from memsql.common.test.thread_monitor import ThreadMonitor
 
 @pytest.fixture(scope="module")
 def manager_setup(request, test_db_args, test_db_database):
@@ -51,18 +52,21 @@ def test_basic_usage(manager):
 
 def test_threading(manager):
     arr = []
+    monitor = ThreadMonitor()
 
     def _test():
-        with manager.acquire('test') as l:
+        with manager.acquire('test', block=True) as l:
             assert l.valid()
             arr.append(1)
             time.sleep(0.1)
             assert len(arr) == 1
             arr.pop()
 
-    threads = [threading.Thread(target=_test) for i in range(10)]
+    threads = [threading.Thread(target=monitor.wrap(_test)) for i in range(10)]
     [t.start() for t in threads]
     [t.join() for t in threads]
+
+    monitor.check()
 
 def test_ping(manager):
     l = manager.acquire('test')
@@ -87,6 +91,10 @@ def test_timeout(manager):
 def test_non_block(manager):
     manager.acquire('test')
     assert manager.acquire('test') is None
+
+def test_with(manager):
+    with manager.acquire('test') as l:
+        assert l.valid()
 
 def test_block_timeout(manager):
     acquired = []

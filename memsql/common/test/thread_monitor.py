@@ -1,5 +1,9 @@
-import Queue
 import sys
+
+try:
+    import queue
+except ImportError:
+    import Queue as queue
 
 class ThreadMonitor(object):
     """Helper class for catching exceptions generated in threads.
@@ -22,7 +26,7 @@ class ThreadMonitor(object):
     Works for multiple threads
     """
     def __init__(self):
-        self.queue = Queue.Queue()
+        self.queue = queue.Queue()
 
     def wrap(self, function):
         def threadMonitorWrapper(*args, **kw):
@@ -39,9 +43,9 @@ class ThreadMonitor(object):
     def check(self):
         try:
             item = self.queue.get(block=False)
-        except Queue.Empty:
+        except queue.Empty:
             return
 
         klass, value, tb = item
 
-        raise klass, value, tb  # note the last parameter - traceback
+        raise klass(value).with_traceback(tb)

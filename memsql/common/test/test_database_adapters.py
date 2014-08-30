@@ -3,6 +3,8 @@
 import pytest
 import time
 from memsql.common import database
+import six
+import uuid
 
 def test_connection_open(test_db_conn):
     assert test_db_conn.connected()
@@ -47,7 +49,7 @@ class TestQueries(object):
     @pytest.fixture(scope="class", autouse=True)
     def ensure_schema(self, x_conn, request):
         x_conn.execute('DROP TABLE IF EXISTS x')
-        x_conn.execute('CREATE TABLE x (id BIGINT AUTO_INCREMENT PRIMARY KEY, value INT, col1 VARCHAR(255), col2 VARCHAR(255))')
+        x_conn.execute('CREATE TABLE x (id BIGINT AUTO_INCREMENT PRIMARY KEY, value INT, col1 VARCHAR(255), col2 VARCHAR(255), colb VARBINARY(32))')
 
     @pytest.fixture(autouse=True)
     def ensure_empty(self, x_conn, request):
@@ -57,14 +59,14 @@ class TestQueries(object):
 
     def test_insert(self, x_conn):
         res = x_conn.query('INSERT INTO x (value) VALUES(1)')
-        assert isinstance(res, long)
+        assert isinstance(res, six.integer_types)
         assert res == 1  # 1 affected row
 
         res = x_conn.execute('INSERT INTO x (value) VALUES(1)')
-        assert isinstance(res, long)
+        assert isinstance(res, six.integer_types)
 
         res = x_conn.execute_lastrowid('INSERT INTO x (value) VALUES(1)')
-        assert isinstance(res, long)
+        assert isinstance(res, six.integer_types)
         last_row = x_conn.get('SELECT * FROM x ORDER BY id DESC LIMIT 1')
         assert res == last_row.id
 
@@ -79,18 +81,30 @@ class TestQueries(object):
         assert first_row.value == 1
 
     def test_unicode(self, x_conn):
-        x_conn.execute('INSERT INTO x (col1) VALUES (%s)', u'⚑☃❄')
-        rows = x_conn.query('SELECT * FROM x WHERE col1=%s', u'⚑☃❄')
+        x_conn.execute('INSERT INTO x (col1) VALUES (%s)', '⚑☃❄')
+        rows = x_conn.query('SELECT * FROM x WHERE col1=%s', '⚑☃❄')
         assert len(rows) == 1
         assert rows[0].col1 == '⚑☃❄'
 
-        rows = x_conn.query('SELECT * FROM x WHERE col1 in (%s)', [u'⚑☃❄', 'jones'])
+        rows = x_conn.query('SELECT * FROM x WHERE col1 in (%s)', ['⚑☃❄', 'jones'])
         assert len(rows) == 1
         assert rows[0].col1 == '⚑☃❄'
 
-        rows = x_conn.query('SELECT * FROM x WHERE col1=%(col1)s', col1=u'⚑☃❄')
+        rows = x_conn.query('SELECT * FROM x WHERE col1=%(col1)s', col1='⚑☃❄')
         assert len(rows) == 1
         assert rows[0].col1 == '⚑☃❄'
+
+    @pytest.mark.skipif(six.PY3, reason="only works in python 2.x")
+    def test_bytes(self, x_conn):
+        data = uuid.uuid4().bytes
+        x_conn.debug_query('INSERT INTO x (colb) VALUES (%s)', data)
+        rows = x_conn.debug_query('SELECT * FROM x WHERE colb=%s', data)
+        assert len(rows) == 1
+        assert rows[0].colb == data
+
+        rows = x_conn.debug_query('SELECT * FROM x WHERE colb in (%s)', [data, uuid.uuid4().bytes])
+        assert len(rows) == 1
+        assert rows[0].colb == data
 
     def test_queryparams(self, x_conn):
         x_conn.execute('INSERT INTO x (value) VALUES (1), (2), (3)')
