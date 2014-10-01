@@ -97,6 +97,7 @@ setup(
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 2.6',
         'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3.4',
     ],
     packages=[
         'memsql',
@@ -105,6 +106,6 @@ setup(
     ],
     zip_safe=False,
     install_requires=REQUIREMENTS,
-    tests_require=['pytest', 'mock','ordereddict==1.1'],
+    tests_require=['pytest', 'mock', 'ordereddict==1.1'],
     cmdclass={ 'test': PyTest },
 )
