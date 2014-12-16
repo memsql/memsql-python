@@ -1,3 +1,7 @@
+2014-12-16 Version 2.14.1
+
+    * Support unix_socket param to database connection
+
 2014-10-01 Version 2.14.0
 
     * Python 3 support
