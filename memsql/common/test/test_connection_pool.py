@@ -12,6 +12,7 @@ def test_key(test_db_args):
            test_db_args['user'],
            test_db_args['password'],
            "information_schema",
+           None,
            multiprocessing.current_process().pid)
 
 @pytest.fixture
@@ -21,7 +22,7 @@ def pool():
 
 @pytest.fixture
 def db_args(test_key):
-    return test_key[:-1]
+    return test_key[:-2]
 
 @pytest.fixture
 def fairy(pool, db_args):
@@ -131,7 +132,7 @@ def test_socket_issues(mock_class, pool, db_args, test_key):
 
     e = exc.value
     assert e.message == 'connection reset'
-    assert (e.host, e.port, e.user, e.password, e.db_name, e.pid) == test_key
+    assert (e.host, e.port, e.user, e.password, e.db_name, e.unix_socket, e.pid) == test_key
 
 def test_sql_errors(fairy):
     from _mysql import ProgrammingError

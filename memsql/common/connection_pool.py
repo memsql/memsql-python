@@ -16,7 +16,7 @@ class PoolConnectionException(IOError):
 
     def __init__(self, errno, message, connection_key):
         IOError.__init__(self, errno, message)
-        (self.host, self.port, self.user, self.password, self.db_name, self.pid) = connection_key
+        (self.host, self.port, self.user, self.password, self.db_name, self.unix_socket, self.pid) = connection_key
 
     def _get_message(self):
         return self.args[1]
@@ -29,9 +29,9 @@ class ConnectionPool(object):
         self._connections = {}
         self._fairies = {}
 
-    def connect(self, host, port, user, password, database):
+    def connect(self, host, port, user, password, database, unix_socket=None):
         current_proc = multiprocessing.current_process()
-        key = (host, port, user, password, database, current_proc.pid)
+        key = (host, port, user, password, database, unix_socket, current_proc.pid)
 
         if key not in self._connections:
             self._connections[key] = queue.Queue(maxsize=QUEUE_SIZE)
@@ -153,9 +153,9 @@ class _PoolConnectionFairy(object):
         try:
             self._conn = self._pool._connections[self._key].get_nowait()
         except queue.Empty:
-            (host, port, user, password, db_name, pid) = self._key
+            (host, port, user, password, db_name, unix_socket, pid) = self._key
             _connect = self.__wrap_errors(database.connect)
-            self._conn = _connect(host=host, port=port, user=user, password=password, database=db_name)
+            self._conn = _connect(host=host, port=port, user=user, password=password, database=db_name, unix_socket=unix_socket)
 
     # catchall
     def __getattr__(self, key):

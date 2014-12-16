@@ -47,5 +47,9 @@ class ThreadMonitor(object):
             return
 
         klass, value, tb = item
+        exc = klass(value)
 
-        raise klass(value).with_traceback(tb)
+        if hasattr(exc, "with_traceback"):
+            raise exc.with_traceback(tb)
+        else:
+            raise exc

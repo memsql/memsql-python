@@ -39,7 +39,7 @@ class Connection(object):
     UTF-8 on all connections to avoid time zone and encoding errors.
     """
     def __init__(self, host, port=3306, database="information_schema", user=None, password=None,
-                 max_idle_time=7 * 3600):
+                 max_idle_time=7 * 3600, unix_socket=None):
         self.max_idle_time = max_idle_time
 
         args = {
@@ -54,6 +54,9 @@ class Connection(object):
 
         args["host"] = host
         args["port"] = int(port)
+
+        if unix_socket is not None:
+            args["unix_socket"] = unix_socket
 
         self._db = None
         self._db_args = args
