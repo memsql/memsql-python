@@ -49,6 +49,7 @@ class PyTest(TestCommand):
         self.test_suite = None
         self.test_module = None
         self.test_loader = None
+        self.test_runner = None
 
     def finalize_options(self):
         TestCommand.finalize_options(self)
