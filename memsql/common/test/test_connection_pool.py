@@ -132,7 +132,7 @@ def test_socket_issues(mock_class, pool, db_args, test_key):
 
     e = exc.value
     assert e.message == 'connection reset'
-    assert (e.host, e.port, e.user, e.password, e.db_name, e.unix_socket, e.pid) == test_key
+    assert (e.host, e.port, e.user, e.password, e.db_name, e.options, e.pid) == test_key
 
 def test_sql_errors(fairy):
     from _mysql import ProgrammingError

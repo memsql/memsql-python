@@ -5,6 +5,7 @@ import time
 from memsql.common import database
 import six
 import uuid
+import copy
 
 def test_connection_open(test_db_conn):
     assert test_db_conn.connected()
@@ -32,6 +33,14 @@ def test_ping(test_db_conn):
 
 def test_thread_id(test_db_conn):
     assert isinstance(test_db_conn.thread_id(), int)
+
+def test_connection_options(test_db_args):
+    args = copy.deepcopy(test_db_args)
+    args["host"] = "memsql.com"
+    args["options"] = { "connect_timeout": 1 }
+    with pytest.raises(database.OperationalError):
+        conn = database.connect(**args)
+        conn.query("SHOW TABLES")
 
 class TestQueries(object):
     @pytest.fixture(scope="class")
