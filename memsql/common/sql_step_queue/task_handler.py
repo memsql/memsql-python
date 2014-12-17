@@ -1,5 +1,4 @@
 import copy
-import calendar
 from datetime import datetime
 from dateutil import parser
 from contextlib import contextmanager

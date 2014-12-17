@@ -37,6 +37,12 @@ def test_checkout(pool, test_key, db_args):
     assert list(pool._connections.values())[0].qsize() == 0
     assert len(pool._fairies) == 1
 
+def test_checkout_options(pool, db_args):
+    from memsql.common.connection_pool import PoolConnectionException
+    args = ("memsql.com",) + db_args[1:5] + ({ "connect_timeout": 1 },)
+    with pytest.raises(PoolConnectionException):
+        pool.connect(*args)
+
 def test_checkin(pool, fairy):
     pool.checkin(fairy, fairy._key, fairy._conn)
 

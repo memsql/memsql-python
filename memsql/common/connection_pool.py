@@ -11,6 +11,10 @@ except ImportError:
 MySQLError = database.MySQLError
 QUEUE_SIZE = 128
 
+class HashableDict(dict):
+    def __hash__(self):
+        return hash(frozenset(self.items()))
+
 class PoolConnectionException(IOError):
     """ This exception consolidates all connection exceptions into one thing """
 
@@ -31,7 +35,7 @@ class ConnectionPool(object):
 
     def connect(self, host, port, user, password, database, options=None):
         current_proc = multiprocessing.current_process()
-        key = (host, port, user, password, database, options, current_proc.pid)
+        key = (host, port, user, password, database, HashableDict(options) if options else None, current_proc.pid)
 
         if key not in self._connections:
             self._connections[key] = queue.Queue(maxsize=QUEUE_SIZE)

@@ -1,3 +1,7 @@
+2014-12-16 Version 2.14.3
+
+    * Fixed bug with the arbitrary options code
+
 2014-12-16 Version 2.14.2
 
     * Support passing arbitrary options to underlying database connection

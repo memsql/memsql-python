@@ -2,7 +2,6 @@ import sys
 import time
 import random
 import uuid
-import types
 from datetime import datetime
 
 from memsql.common import json
