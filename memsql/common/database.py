@@ -300,10 +300,16 @@ def escape_query(query, parameters):
         else:
             assert False, 'not sure what to do with parameters of type %s' % type(parameters)
 
-    return query
+    return _escape_unicode(query)
+
+def _escape_unicode(param):
+    if not six.PY3 and isinstance(param, unicode):
+        return param.encode('utf-8')
+    return param
 
 def _escape(param):
     if isinstance(param, (list, tuple)):
+        param = [_escape_unicode(p) for p in param]
         return ','.join(_mysql.escape_sequence(param, CONVERSIONS))
     else:
-        return _mysql.escape(param, CONVERSIONS)
+        return _mysql.escape(_escape_unicode(param), CONVERSIONS)
