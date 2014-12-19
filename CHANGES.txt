@@ -1,3 +1,7 @@
+2014-12-19 Version 2.14.4
+
+    * Fixed bug with Unicode escaping in Python 2
+
 2014-12-16 Version 2.14.3
 
     * Fixed bug with the arbitrary options code

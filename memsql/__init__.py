@@ -1,4 +1,4 @@
 """ MemSQL-python
 """
 
-__version__ = "2.14.3"
+__version__ = "2.14.4"
