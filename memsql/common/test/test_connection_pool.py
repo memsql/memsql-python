@@ -58,6 +58,21 @@ def test_connection_reuse(pool, test_key, db_args):
     assert fairy._conn == db_conn
     fairy.close()
 
+def test_connection_invalidation(pool, test_key, db_args):
+    fairy = pool.connect(*db_args)
+    db_conn = fairy._conn
+    r = fairy.query('SELECT 1')
+    assert r[0]['1'] == 1
+    fairy.close()
+    db_conn.close()
+    fairy = pool.connect(*db_args)
+    # We should not have used the same db connection because we should have
+    # detected that it was closed.
+    assert fairy._conn != db_conn
+    r = fairy.query('SELECT 1')
+    assert r[0]['1'] == 1
+    fairy.close()
+
 def test_connection_close(pool, db_args):
     fairy = pool.connect(*db_args)
     fairy2 = pool.connect(*db_args)

@@ -154,9 +154,15 @@ class _PoolConnectionFairy(object):
     # Wrap DB Api to deal with connection issues and so on in an intelligent way
 
     def connect(self):
+        self._conn = None
         try:
-            self._conn = self._pool._connections[self._key].get_nowait()
-        except queue.Empty:
+            conn = self._pool._connections[self._key].get_nowait()
+            if self.__wrap_errors(conn.connected)():
+                self._conn = conn
+        except (queue.Empty, PoolConnectionException):
+            pass
+
+        if self._conn is None:
             (host, port, user, password, db_name, options, pid) = self._key
             _connect = self.__wrap_errors(database.connect)
             self._conn = _connect(
