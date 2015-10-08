@@ -16,7 +16,7 @@ REQUIREMENTS = [
 ]
 
 if sys.version_info[0] == 3:
-    REQUIREMENTS.append('mysqlclient==1.3.2')
+    REQUIREMENTS.append('mysqlclient==1.3.6')
 elif sys.version_info[0] == 2:
     REQUIREMENTS.append('MySQL-python==1.2.5')
 else:
