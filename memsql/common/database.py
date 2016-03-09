@@ -146,7 +146,7 @@ class Connection(object):
     def _query(self, query, parameters, kwparameters, debug=False):
         self._execute(query, parameters, kwparameters, debug)
 
-        self._result = self._db.use_result()
+        self._result = self._db.store_result()
         if self._result is None:
             return self._rowcount
 
