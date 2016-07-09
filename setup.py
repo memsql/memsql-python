@@ -12,7 +12,7 @@ REQUIREMENTS = [
     'wraptor',
     'simplejson',
     'python-dateutil==2.2',
-    'six==1.8.0'
+    'six==1.10.0'
 ]
 
 if sys.version_info[0] == 3:
