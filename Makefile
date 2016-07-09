@@ -2,7 +2,7 @@ all:
 	rm -rf build/ dist; ./setup.py sdist
 
 upload: all
-	python setup.py sdist upload
+	python setup.py sdist register upload
 
 clean:
 	rm -rf *.egg memsql.egg-info dist build
