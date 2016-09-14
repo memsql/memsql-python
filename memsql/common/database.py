@@ -181,30 +181,30 @@ class Row(object):
     """A fast, ordered, partially-immutable dictlike object (or objectlike dict)."""
 
     def __init__(self, fields, values):
-        self._fields = fields
+        self._fields = map(lambda a:a.lower(), fields)
         self._values = values
 
     def __getattr__(self, name):
         try:
-            return self._values[self._fields.index(name)]
+            return self._values[self._fields.index(name.lower())]
         except (ValueError, IndexError):
             raise AttributeError(name)
 
     def __getitem__(self, name):
         try:
-            return self._values[self._fields.index(name)]
+            return self._values[self._fields.index(name.lower())]
         except (ValueError, IndexError):
             raise KeyError(name)
 
     def __setitem__(self, name, value):
         try:
-            self._values[self._fields.index(name)] = value
+            self._values[self._fields.index(name.lower())] = value
         except (ValueError, IndexError):
-            self._fields += (name,)
+            self._fields += (name.lower(),)
             self._values += (value,)
 
     def __contains__(self, name):
-        return name in self._fields
+        return name.lower() in self._fields
 
     has_key = __contains__
 
@@ -219,7 +219,7 @@ class Row(object):
 
     def get(self, name, default=None):
         try:
-            return self.__getitem__(name)
+            return self.__getitem__(name.lower())
         except KeyError:
             return default
 
