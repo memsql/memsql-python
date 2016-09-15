@@ -4,7 +4,7 @@ import _mysql
 import time
 import operator
 import six
-from util import get_field_type_by_code
+from memsql.common import util
 
 try:
     from _thread import get_ident as _get_ident
@@ -151,7 +151,7 @@ class Connection(object):
         if self._result is None:
             return self._rowcount
 
-        fields = [ (f[0], get_field_type_by_code(f[1]), ) for f in self._result.describe() ]
+        fields = [ (f[0], util.get_field_type_by_code(f[1]), ) for f in self._result.describe() ]
         rows = self._result.fetch_row(0)
         return SelectResult(fields, rows)
 
