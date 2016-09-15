@@ -36,5 +36,6 @@ def timedelta_total_seconds(td):
     return (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10. ** 6) / 10. ** 6
 
 
-def get_type_by_id(id):
+def get_field_type_by_code(id):
     return FIELD_TYPE_DICT.get(id, N_A_TYPE)
+
