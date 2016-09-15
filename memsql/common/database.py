@@ -4,6 +4,7 @@ import _mysql
 import time
 import operator
 import six
+from memsql.common import util
 
 try:
     from _thread import get_ident as _get_ident
@@ -150,7 +151,7 @@ class Connection(object):
         if self._result is None:
             return self._rowcount
 
-        fields = [ f[0] for f in self._result.describe() ]
+        fields = [ (f[0], util.get_field_type_by_code(f[1]), ) for f in self._result.describe() ]
         rows = self._result.fetch_row(0)
         return SelectResult(fields, rows)
 
@@ -180,31 +181,32 @@ class Connection(object):
 class Row(object):
     """A fast, ordered, partially-immutable dictlike object (or objectlike dict)."""
 
-    def __init__(self, fields, values):
-        self._fields = fields
+    def __init__(self, fields_and_types_tuple, values):
+        self._fields = list(map(lambda a: a[0].lower(), fields_and_types_tuple))
         self._values = values
+        self._types = fields_and_types_tuple
 
     def __getattr__(self, name):
         try:
-            return self._values[self._fields.index(name)]
+            return self._values[self._fields.index(name.lower())]
         except (ValueError, IndexError):
             raise AttributeError(name)
 
     def __getitem__(self, name):
         try:
-            return self._values[self._fields.index(name)]
+            return self._values[self._fields.index(name.lower())]
         except (ValueError, IndexError):
             raise KeyError(name)
 
     def __setitem__(self, name, value):
         try:
-            self._values[self._fields.index(name)] = value
+            self._values[self._fields.index(name.lower())] = value
         except (ValueError, IndexError):
-            self._fields += (name,)
+            self._fields += (name.lower(),)
             self._values += (value,)
 
     def __contains__(self, name):
-        return name in self._fields
+        return name.lower() in self._fields
 
     has_key = __contains__
 
@@ -219,7 +221,7 @@ class Row(object):
 
     def get(self, name, default=None):
         try:
-            return self.__getitem__(name)
+            return self.__getitem__(name.lower())
         except KeyError:
             return default
 
@@ -234,6 +236,9 @@ class Row(object):
     def items(self):
         for item in zip(self._fields, self._values):
             yield item
+
+    def get_types(self):
+        return self._types
 
     def __eq__(self, other):
         if isinstance(other, Row):
@@ -273,10 +278,11 @@ class Row(object):
 
 class SelectResult(list):
     def __init__(self, fieldnames, rows):
-        self.fieldnames = tuple(fieldnames)
+        # self.fieldnames = tuple(map(lambda a: a[0], fieldnames))
+        self.fieldnames = fieldnames
         self.rows = rows
 
-        data = [Row(self.fieldnames, row) for row in self.rows]
+        data = [Row(fieldnames, row) for row in self.rows]
         list.__init__(self, data)
 
     def width(self):
