@@ -27,7 +27,7 @@ def test_result_order():
     res = database.SelectResult(FIELDS, raw_data)
 
     for i, row in enumerate(res):
-        _FIELDS = map(lambda a: a[0], FIELDS)
+        _FIELDS = list(map(lambda a: a[0], FIELDS))
         reference = dict(zip(_FIELDS, raw_data[i]))
         ordered = OrderedDict(zip(_FIELDS, raw_data[i]))
         doppel = database.Row(FIELDS, raw_data[i])

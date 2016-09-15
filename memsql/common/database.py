@@ -182,7 +182,7 @@ class Row(object):
     """A fast, ordered, partially-immutable dictlike object (or objectlike dict)."""
 
     def __init__(self, fields_and_types_tuple, values):
-        self._fields = map(lambda a: a[0].lower(), fields_and_types_tuple)
+        self._fields = list(map(lambda a: a[0].lower(), fields_and_types_tuple))
         self._values = values
         self._types = fields_and_types_tuple
 
