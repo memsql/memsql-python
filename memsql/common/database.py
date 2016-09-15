@@ -4,6 +4,7 @@ import _mysql
 import time
 import operator
 import six
+from util import get_type_by_id
 
 try:
     from _thread import get_ident as _get_ident
@@ -150,7 +151,7 @@ class Connection(object):
         if self._result is None:
             return self._rowcount
 
-        fields = [ f[0] for f in self._result.describe() ]
+        fields = [ (f[0], get_type_by_id(f[1]), ) for f in self._result.describe() ]
         rows = self._result.fetch_row(0)
         return SelectResult(fields, rows)
 
@@ -180,9 +181,10 @@ class Connection(object):
 class Row(object):
     """A fast, ordered, partially-immutable dictlike object (or objectlike dict)."""
 
-    def __init__(self, fields, values):
-        self._fields = map(lambda a:a.lower(), fields)
+    def __init__(self, fields_and_types_tuple, values):
+        self._fields = map(lambda a: a[0].lower(), fields_and_types_tuple)
         self._values = values
+        self._types = fields_and_types_tuple
 
     def __getattr__(self, name):
         try:
@@ -235,6 +237,9 @@ class Row(object):
         for item in zip(self._fields, self._values):
             yield item
 
+    def get_types(self):
+        return self._types
+
     def __eq__(self, other):
         if isinstance(other, Row):
             return dict.__eq__(dict(self.items()), other) and all(map(operator.eq, self, other))
@@ -273,10 +278,11 @@ class Row(object):
 
 class SelectResult(list):
     def __init__(self, fieldnames, rows):
-        self.fieldnames = tuple(fieldnames)
+        # self.fieldnames = tuple(map(lambda a: a[0], fieldnames))
+        self.fieldnames = fieldnames
         self.rows = rows
 
-        data = [Row(self.fieldnames, row) for row in self.rows]
+        data = [Row(fieldnames, row) for row in self.rows]
         list.__init__(self, data)
 
     def width(self):
