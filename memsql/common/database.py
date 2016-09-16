@@ -284,7 +284,7 @@ class SelectResult(list):
         return len(self.fieldnames)
 
     def get_fields_and_types(self):
-        return map(lambda (a, b): (a, list(FIELD_TYPE.__dict__.keys())[list(FIELD_TYPE.__dict__.values()).index(b)]),
+        return map(lambda field_tuple: (field_tuple[0], list(FIELD_TYPE.__dict__.keys())[list(FIELD_TYPE.__dict__.values()).index(field_tuple[1])]),
                    self._fields_and_types)
 
     def __getitem__(self, i):
