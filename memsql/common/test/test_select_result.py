@@ -26,7 +26,7 @@ def get_sample_data(fields):
 def test_get_fields_and_types():
     raw_data = get_sample_data(FIELDS_AND_TYPES)
     res = database.SelectResult(FIELDS_AND_TYPES, raw_data)
-    assert res.get_fields_and_types() == map(lambda field_tuple: (field_tuple[0], field_tuple[0].split('_')[0]), FIELDS_AND_TYPES)
+    assert list(res.get_fields_and_types()) == list(map(lambda field_tuple: (field_tuple[0], field_tuple[0].split('_')[0]), FIELDS_AND_TYPES))
 
 def test_result_order():
     raw_data = get_sample_data(FIELDS)
