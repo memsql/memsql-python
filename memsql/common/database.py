@@ -4,6 +4,7 @@ import _mysql
 import time
 import operator
 import six
+from MySQLdb.constants import FIELD_TYPE
 
 try:
     from _thread import get_ident as _get_ident
@@ -150,9 +151,9 @@ class Connection(object):
         if self._result is None:
             return self._rowcount
 
-        fields = [ f[0] for f in self._result.describe() ]
+        fields_and_types = [(f[0], f[1], ) for f in self._result.describe()]
         rows = self._result.fetch_row(0)
-        return SelectResult(fields, rows)
+        return SelectResult(fields_and_types, rows)
 
     def _execute(self, query, parameters, kwparameters, debug=False):
         if parameters and kwparameters:
@@ -272,15 +273,19 @@ class Row(object):
     __reversed__ = nope
 
 class SelectResult(list):
-    def __init__(self, fieldnames, rows):
-        self.fieldnames = tuple(fieldnames)
+    def __init__(self, fieldnames_and_types, rows):
+        self.fieldnames = tuple(map(lambda a: a[0], fieldnames_and_types))
+        self._fields_and_types = fieldnames_and_types
         self.rows = rows
-
         data = [Row(self.fieldnames, row) for row in self.rows]
         list.__init__(self, data)
 
     def width(self):
         return len(self.fieldnames)
+
+    def get_fields_and_types(self):
+        return map(lambda (a, b): (a, FIELD_TYPE.__dict__.keys()[FIELD_TYPE.__dict__.values().index(b)]),
+                   self._fields_and_types)
 
     def __getitem__(self, i):
         if isinstance(i, slice):
