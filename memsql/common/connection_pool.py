@@ -78,6 +78,7 @@ class ConnectionPool(object):
                     conn.close()
                 except queue.Empty:
                     break
+        self._current_version = 0
 
     def size(self):
         """ Returns the number of connections cached by the pool. """
@@ -173,8 +174,8 @@ class _PoolConnectionFairy(object):
                 (host, port, user, password, db_name, options, pid) = self._key
                 _connect = self.__wrap_errors(database.connect)
                 self._conn = _connect(
-                    host=host, version=current_version, port=port, user=user, password=password,
-                    database=db_name, options=options)
+                    host=host, port=port, user=user, password=password,
+                    database=db_name, _version=current_version, options=options)
 
         """
         try:

@@ -54,9 +54,50 @@ def test_connection_reuse(pool, test_key, db_args):
     fairy = pool.connect(*db_args)
     db_conn = fairy._conn
     fairy.close()
+    assert len(pool._connections) == 1
+    assert list(pool._connections.values())[0].qsize() == 1
+
     fairy = pool.connect(*db_args)
     assert fairy._conn == db_conn
     fairy.close()
+    assert len(pool._connections) == 1
+    assert list(pool._connections.values())[0].qsize() == 1
+
+def test_cant_checkout_old_fairy(pool, test_key, db_args):
+    fairy = pool.connect(*db_args)
+    assert pool._current_version == 0
+
+    db_conn = fairy._conn
+    assert db_conn._version == 0
+    fairy.close()
+
+    pool.promote_version()
+    assert pool._current_version == 1
+    assert len(pool._connections) == 1
+    assert list(pool._connections.values())[0].qsize() == 1
+
+    fairy = pool.connect(*db_args)
+    assert fairy._conn != db_conn
+    assert fairy._conn._version == 1
+
+    fairy.close()
+    assert len(pool._connections) == 1
+    assert list(pool._connections.values())[0].qsize() == 1
+
+def test_cant_checkin_old_fairy(pool, test_key, db_args):
+    fairy = pool.connect(*db_args)
+    assert pool._current_version == 0
+
+    db_conn = fairy._conn
+    assert db_conn._version == 0
+
+    pool.promote_version()
+    assert pool._current_version == 1
+
+    fairy.close()
+
+    assert len(pool._connections) == 1
+    assert list(pool._connections.values())[0].qsize() == 0
 
 def test_connection_invalidation(pool, test_key, db_args):
     fairy = pool.connect(*db_args)
