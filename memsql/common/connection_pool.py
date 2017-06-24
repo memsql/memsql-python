@@ -38,7 +38,7 @@ class ConnectionPool(object):
         """ Gradually close all existing connections, allowing currently-used connections to finish.
 
         This may be used after MemSQL session state has has changed and pre-existing connections
-        are no longer consistent.
+        are no longer valid.
         """
         self._current_version = self._current_version + 1
 
@@ -85,7 +85,7 @@ class ConnectionPool(object):
                     conn.close()
                 except queue.Empty:
                     break
-        self._current_version = 0
+        self._current_version = self._current_version + 1
 
     def size(self):
         """ Returns the number of connections cached by the pool. """
