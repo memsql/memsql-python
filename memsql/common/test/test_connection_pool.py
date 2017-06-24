@@ -63,7 +63,7 @@ def test_connection_reuse(pool, test_key, db_args):
     assert len(pool._connections) == 1
     assert list(pool._connections.values())[0].qsize() == 1
 
-def test_cant_checkout_old_fairy(pool, test_key, db_args):
+def test_cant_checkout_old_fairy_after_restart(pool, test_key, db_args):
     fairy = pool.connect(*db_args)
     assert pool._current_version == 0
 
@@ -71,7 +71,7 @@ def test_cant_checkout_old_fairy(pool, test_key, db_args):
     assert db_conn._version == 0
     fairy.close()
 
-    pool.promote_version()
+    pool.restart()
     assert pool._current_version == 1
     assert len(pool._connections) == 1
     assert list(pool._connections.values())[0].qsize() == 1
@@ -84,14 +84,14 @@ def test_cant_checkout_old_fairy(pool, test_key, db_args):
     assert len(pool._connections) == 1
     assert list(pool._connections.values())[0].qsize() == 1
 
-def test_cant_checkin_old_fairy(pool, test_key, db_args):
+def test_cant_checkin_old_fairy_after_restart(pool, test_key, db_args):
     fairy = pool.connect(*db_args)
     assert pool._current_version == 0
 
     db_conn = fairy._conn
     assert db_conn._version == 0
 
-    pool.promote_version()
+    pool.restart()
     assert pool._current_version == 1
 
     fairy.close()

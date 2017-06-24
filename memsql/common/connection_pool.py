@@ -34,7 +34,12 @@ class ConnectionPool(object):
         self._fairies = {}
         self._current_version = 0
 
-    def promote_version(self):
+    def rolling_restart(self):
+        """ Gradually close all existing connections, allowing currently-used connections to finish.
+
+        This may be used after MemSQL session state has has changed and pre-existing connections
+        are no longer consistent.
+        """
         self._current_version = self._current_version + 1
 
     def connect(self, host, port, user, password, database, options=None):
@@ -63,6 +68,8 @@ class ConnectionPool(object):
                 self._connections[key].put_nowait(conn)
             except queue.Full:
                 conn.close()
+        else:
+            conn.close()
 
         if fairy in self._fairies:
             del(self._fairies[fairy])
@@ -160,28 +167,12 @@ class _PoolConnectionFairy(object):
 
     def connect(self, current_version):
         self._conn = None
-
-        while self._conn is None:
-            try:
-                conn = self._pool._connections[self._key].get_nowait()
-                if (conn._version == current_version) and self.__wrap_errors(conn.connected)():
-                    self._conn = conn
-
-            except PoolConnectionException:
-                continue
-
-            except queue.Empty:
-                (host, port, user, password, db_name, options, pid) = self._key
-                _connect = self.__wrap_errors(database.connect)
-                self._conn = _connect(
-                    host=host, port=port, user=user, password=password,
-                    database=db_name, _version=current_version, options=options)
-
-        """
         try:
             conn = self._pool._connections[self._key].get_nowait()
-            if self.__wrap_errors(conn.connected)():
+            if (conn._version == current_version) and self.__wrap_errors(conn.connected)():
                 self._conn = conn
+            else:
+                conn.close()
         except (queue.Empty, PoolConnectionException):
             pass
 
@@ -190,8 +181,7 @@ class _PoolConnectionFairy(object):
             _connect = self.__wrap_errors(database.connect)
             self._conn = _connect(
                 host=host, port=port, user=user, password=password,
-                database=db_name, options=options)
-        """
+                database=db_name, _version=current_version, options=options)
 
     # catchall
     def __getattr__(self, key):
