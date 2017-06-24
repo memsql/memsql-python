@@ -37,7 +37,7 @@ class ConnectionPool(object):
     def rolling_restart(self):
         """ Gradually close all existing connections, allowing currently-used connections to finish.
 
-        This may be used after MemSQL session state has has changed and pre-existing connections
+        This may be used after MemSQL session state has changed and pre-existing connections
         are no longer valid.
         """
         self._current_version = self._current_version + 1
