@@ -32,6 +32,15 @@ class ConnectionPool(object):
         self.logger = logging.getLogger('memsql.connection_pool')
         self._connections = {}
         self._fairies = {}
+        self._current_version = 0
+
+    def rolling_restart(self):
+        """ Gradually close all existing connections, allowing currently-used connections to finish.
+
+        This may be used after MemSQL session state has changed and pre-existing connections
+        are no longer valid.
+        """
+        self._current_version = self._current_version + 1
 
     def connect(self, host, port, user, password, database, options=None):
         current_proc = multiprocessing.current_process()
@@ -41,7 +50,7 @@ class ConnectionPool(object):
             self._connections[key] = queue.Queue(maxsize=QUEUE_SIZE)
 
         fairy = _PoolConnectionFairy(key, self)
-        fairy.connect()
+        fairy.connect(self._current_version)
         self._fairies[fairy] = 1
         return fairy
 
@@ -54,11 +63,13 @@ class ConnectionPool(object):
                 conn.close()
             except Exception:
                 self.logger.error("Could not close connection after fairy expired")
-        else:
+        elif (conn._version == self._current_version):
             try:
                 self._connections[key].put_nowait(conn)
             except queue.Full:
                 conn.close()
+        else:
+            conn.close()
 
         if fairy in self._fairies:
             del(self._fairies[fairy])
@@ -74,6 +85,7 @@ class ConnectionPool(object):
                     conn.close()
                 except queue.Empty:
                     break
+        self._current_version = self._current_version + 1
 
     def size(self):
         """ Returns the number of connections cached by the pool. """
@@ -153,12 +165,14 @@ class _PoolConnectionFairy(object):
     ##################
     # Wrap DB Api to deal with connection issues and so on in an intelligent way
 
-    def connect(self):
+    def connect(self, current_version):
         self._conn = None
         try:
             conn = self._pool._connections[self._key].get_nowait()
-            if self.__wrap_errors(conn.connected)():
+            if (conn._version == current_version) and self.__wrap_errors(conn.connected)():
                 self._conn = conn
+            else:
+                conn.close()
         except (queue.Empty, PoolConnectionException):
             pass
 
@@ -167,7 +181,7 @@ class _PoolConnectionFairy(object):
             _connect = self.__wrap_errors(database.connect)
             self._conn = _connect(
                 host=host, port=port, user=user, password=password,
-                database=db_name, options=options)
+                database=db_name, _version=current_version, options=options)
 
     # catchall
     def __getattr__(self, key):
