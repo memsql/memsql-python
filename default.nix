@@ -4,6 +4,7 @@ with import <nixpkgs> {}; {
     buildInputs = with python27Packages; [
       python27Full
       python27Packages.virtualenv
+      python27Packages.twine
       mysql55
       zlib
       openssl

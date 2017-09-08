@@ -2,7 +2,8 @@ all:
 	rm -rf build/ dist; ./setup.py sdist
 
 upload: all
-	python setup.py sdist register upload
+	python setup.py sdist
+	twine upload dist/*
 
 clean:
 	rm -rf *.egg memsql.egg-info dist build
