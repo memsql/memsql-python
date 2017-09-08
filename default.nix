@@ -5,6 +5,12 @@ with import <nixpkgs> {}; {
       python27Full
       python27Packages.virtualenv
       mysql55
+      zlib
+      openssl
     ];
+    shellHook = ''
+      [ -d venv ] || virtualenv venv
+      source venv/bin/activate
+    '';
   };
 }

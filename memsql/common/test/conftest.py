@@ -2,7 +2,7 @@ import pytest
 from memsql.common import database
 import os
 
-host = os.environ.get('MEMSQL_PYTHON_TEST_HOST', 'x.memcompute.com')
+host = os.environ.get('MEMSQL_PYTHON_TEST_HOST', '127.0.0.1')
 
 @pytest.fixture(scope="module")
 def test_db_database():
@@ -10,20 +10,12 @@ def test_db_database():
 
 @pytest.fixture(scope="module")
 def test_db_args():
-    if os.environ.get('TRAVIS') == 'true':
-        return {
-            "host": '127.0.0.1',
-            "port": 3306,
-            "user": 'travis',
-            "password": ''
-        }
-    else:
-        return {
-            "host": host,
-            "port": 3306,
-            "user": 'root',
-            "password": ''
-        }
+    return {
+        "host": host,
+        "port": 3306,
+        "user": 'root',
+        "password": ''
+    }
 
 @pytest.fixture
 def test_db_conn(test_db_args):
