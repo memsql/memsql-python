@@ -83,7 +83,7 @@ def test_ping(manager):
 def test_timeout(manager):
     l = manager.acquire('test', expiry=1)
 
-    time.sleep(1)
+    time.sleep(2)
     assert not l.valid()
 
     assert manager.acquire('test') is not None

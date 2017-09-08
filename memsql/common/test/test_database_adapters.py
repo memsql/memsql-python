@@ -46,7 +46,7 @@ class TestQueries(object):
     @pytest.fixture(scope="class")
     def x_conn(self, request, test_db_args, test_db_database):
         conn = database.connect(**test_db_args)
-        conn.execute('CREATE DATABASE IF NOT EXISTS %s' % test_db_database)
+        conn.execute('CREATE DATABASE IF NOT EXISTS %s CHARACTER SET utf8 COLLATE utf8_general_ci' % test_db_database)
         conn.select_db(test_db_database)
 
         def cleanup():
@@ -58,7 +58,15 @@ class TestQueries(object):
     @pytest.fixture(scope="class", autouse=True)
     def ensure_schema(self, x_conn, request):
         x_conn.execute('DROP TABLE IF EXISTS x')
-        x_conn.execute('CREATE TABLE x (id BIGINT AUTO_INCREMENT PRIMARY KEY, value INT, col1 VARCHAR(255), col2 VARCHAR(255), colb VARBINARY(32))')
+        x_conn.execute("""
+            CREATE TABLE x (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                value INT,
+                col1 VARCHAR(255),
+                col2 VARCHAR(255),
+                colb VARBINARY(32)
+            ) DEFAULT CHARSET=utf8
+        """)
 
     @pytest.fixture(autouse=True)
     def ensure_empty(self, x_conn, request):
@@ -90,6 +98,8 @@ class TestQueries(object):
         assert first_row.value == 1
 
     def test_unicode(self, x_conn):
+        x_conn.execute("SET NAMES utf8")
+
         x_conn.execute('INSERT INTO x (col1) VALUES (%s)', '⚑☃❄')
         rows = x_conn.query('SELECT * FROM x WHERE col1=%s', '⚑☃❄')
         assert len(rows) == 1
