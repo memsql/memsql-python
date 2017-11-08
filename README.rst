@@ -19,6 +19,14 @@ Copy and paste the following steps to get started quickly on Ubuntu:
     sudo apt-get update
     sudo apt-get install -y mysql-client python-dev libmysqlclient-dev python-pip
     sudo pip install memsql
+    
+Copy and paste the following to get started with Amazon Linux: 
+
+.. code:: bash
+
+    sudo yum update
+    sudo yum install gcc mysql-devel
+    sudo pip install memsql
 
 Testing
 =======
