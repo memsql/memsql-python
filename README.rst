@@ -25,7 +25,7 @@ Copy and paste the following to get started with Amazon Linux:
 .. code:: bash
 
     sudo yum update
-    sudo yum install gcc mysql-devel
+    sudo yum install -y gcc mysql-devel
     sudo pip install memsql
 
 Testing
