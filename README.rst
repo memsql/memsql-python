@@ -22,6 +22,7 @@ Copy and paste the following steps to get started quickly on Ubuntu:
     
 Copy and paste the following to get 
 started with RHEL based distributions such as Amazon Linux or Centos:
+
 .. code:: bash
 
     sudo yum update
