@@ -20,8 +20,8 @@ Copy and paste the following steps to get started quickly on Ubuntu:
     sudo apt-get install -y mysql-client python-dev libmysqlclient-dev python-pip
     sudo pip install memsql
     
-Copy and paste the following to get started with Amazon Linux: 
-
+Copy and paste the following to get 
+started with RHEL based distributions such as Amazon Linux or Centos:
 .. code:: bash
 
     sudo yum update
