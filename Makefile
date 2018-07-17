@@ -20,3 +20,11 @@ test-watch:
 .PHONY: flake8
 flake8:
 	flake8 --config=.flake8 .
+
+.PHONY: shell-py2
+shell-py2:
+	nix-shell -A memsqlPython2Env
+
+.PHONY: shell-py3
+shell-py3:
+	nix-shell -A memsqlPython3Env

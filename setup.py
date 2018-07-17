@@ -12,7 +12,7 @@ REQUIREMENTS = [
     'wraptor',
     'simplejson',
     'python-dateutil==2.2',
-    'six==1.10.0'
+    'six==1.11.0'
 ]
 
 if sys.version_info[0] == 3:
@@ -78,7 +78,7 @@ class PyTest(TestCommand):
         sys.path.append(MY_PATH)
         os.environ['PYTHONPATH'] = os.environ.get('PYTHONPATH', '') + ':' + MY_PATH
 
-        egg_dirs = glob.glob('*.egg')
+        egg_dirs = glob.glob('*.egg*')
         ignore_args = ['--ignore=%s' % d for d in egg_dirs]
 
         import pytest
