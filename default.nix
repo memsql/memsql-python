@@ -5,7 +5,6 @@ with import <nixpkgs> {}; {
       python27Full
       python27Packages.virtualenv
       python27Packages.twine
-      python27Packages.twine
       mysql55
       zlib
       openssl
