@@ -11,8 +11,8 @@ import sys
 REQUIREMENTS = [
     'wraptor',
     'simplejson',
-    'python-dateutil==2.2',
-    'six==1.11.0'
+    'python-dateutil>=2.2,<3.0',
+    'six>=1.11.0'
 ]
 
 if sys.version_info[0] == 3:
