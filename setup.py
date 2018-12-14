@@ -11,12 +11,12 @@ import sys
 REQUIREMENTS = [
     'wraptor',
     'simplejson',
-    'python-dateutil==2.2',
-    'six==1.11.0'
+    'python-dateutil<3.0',
+    'six',
 ]
 
 if sys.version_info[0] == 3:
-    REQUIREMENTS.append('mysqlclient==1.3.6')
+    REQUIREMENTS.append('mysqlclient<1.4.0')
 elif sys.version_info[0] == 2:
     REQUIREMENTS.append('MySQL-python==1.2.5')
 else:
