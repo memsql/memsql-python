@@ -11,8 +11,8 @@ import sys
 REQUIREMENTS = [
     'wraptor',
     'simplejson',
-    'python-dateutil==2.2',
-    'six==1.11.0'
+    'python-dateutil<3.0',
+    'six',
 ]
 
 if sys.version_info[0] == 3:
@@ -99,6 +99,8 @@ setup(
         'Programming Language :: Python :: 2.6',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
     ],
     packages=[
         'memsql',
