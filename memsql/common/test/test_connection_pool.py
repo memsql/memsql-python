@@ -148,8 +148,8 @@ def test_fairy_reconnect(fairy):
 @pytest.fixture()
 def _fairy_queries_fixture(request, fairy, test_db_args, test_db_database):
     test_queries = TestQueries()
-    conn = test_queries.x_conn(request, test_db_args, test_db_database)
-    test_queries.ensure_schema(conn, request)
+    conn = test_queries._x_conn(request, test_db_args, test_db_database)
+    test_queries._ensure_schema(conn, request)
 
 def test_fairy_queries(fairy, _fairy_queries_fixture, test_db_database):
     test_queries = TestQueries()

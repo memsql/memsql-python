@@ -45,6 +45,9 @@ def test_connection_options(test_db_args):
 class TestQueries(object):
     @pytest.fixture(scope="class")
     def x_conn(self, request, test_db_args, test_db_database):
+        return self._x_conn(request, test_db_args, test_db_database)
+
+    def _x_conn(self, request, test_db_args, test_db_database):
         conn = database.connect(**test_db_args)
         conn.execute('CREATE DATABASE IF NOT EXISTS %s CHARACTER SET utf8 COLLATE utf8_general_ci' % test_db_database)
         conn.select_db(test_db_database)
@@ -57,6 +60,9 @@ class TestQueries(object):
 
     @pytest.fixture(scope="class", autouse=True)
     def ensure_schema(self, x_conn, request):
+        return self._ensure_schema(x_conn, request)
+
+    def _ensure_schema(self, x_conn, request):
         x_conn.execute('DROP TABLE IF EXISTS x')
         x_conn.execute("""
             CREATE TABLE x (
@@ -70,6 +76,9 @@ class TestQueries(object):
 
     @pytest.fixture(autouse=True)
     def ensure_empty(self, x_conn, request):
+        return self._ensure_empty(x_conn, request)
+
+    def _ensure_empty(self, x_conn, request):
         cleanup = lambda: x_conn.execute('DELETE FROM x')
         cleanup()
         request.addfinalizer(cleanup)

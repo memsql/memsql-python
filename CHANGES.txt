@@ -1,3 +1,9 @@
+2018-12-18 Version 2.19.0
+
+    * Remove explicit pinning of six dependency
+    * Relax dateutil dependency to `<3.0`
+    * Remove Python 2.6 support
+
 2018-07-17 Version 2.18.0
 
     * Upgrade six dependency to version 1.11.0
