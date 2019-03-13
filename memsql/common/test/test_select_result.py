@@ -3,6 +3,7 @@ from memsql.common import database
 import random
 import pytest
 import simplejson as json
+from MySQLdb.constants import FIELD_TYPE
 
 try:
     from collections import OrderedDict
@@ -16,9 +17,20 @@ FIELDS = ['l\\u203pez', 'ಠ_ಠ', 'cloud', 'moon', 'water', 'computer', 'school
           'tight', 'zone', 'tomato', 'prison', 'hydro', 'cleaning', 'telivision', 'send', 'frog', 'cup',
           'book', 'zooming', 'falling', 'evily', 'gamer', 'lid', 'juice', 'moniter', 'captain', 'bonding']
 
+FIELDS_AND_TYPES = [('VARCHAR_FIELD', FIELD_TYPE.VARCHAR), ('BIT_FIELD', FIELD_TYPE.BIT),
+                    ('DATETIME_FIELD', FIELD_TYPE.DATETIME), ('TIMESTAMP_FIELD', FIELD_TYPE.TIMESTAMP)]
+
+def get_sample_data(fields):
+    return [[random.randint(1, 2 ** 32) for _ in range(len(fields))] for _ in range(256)]
+
+def test_get_fields_and_types():
+    raw_data = get_sample_data(FIELDS_AND_TYPES)
+    res = database.SelectResult(FIELDS_AND_TYPES, raw_data)
+    assert list(res.get_fields_and_types()) == list(map(lambda field_tuple: (field_tuple[0], field_tuple[0].split('_')[0]), FIELDS_AND_TYPES))
+
 def test_result_order():
-    raw_data = [[random.randint(1, 2 ** 32) for _ in range(len(FIELDS))] for _ in range(256)]
-    res = database.SelectResult(FIELDS, raw_data)
+    raw_data = get_sample_data(FIELDS)
+    res = database.SelectResult(map(lambda a: (a, FIELD_TYPE.VARCHAR), FIELDS), raw_data)
 
     for i, row in enumerate(res):
         reference = dict(zip(FIELDS, raw_data[i]))
