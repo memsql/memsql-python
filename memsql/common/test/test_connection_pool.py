@@ -1,7 +1,6 @@
 import pytest
 import mock
 import multiprocessing
-import six
 
 from memsql.common.test.test_database_adapters import TestQueries
 
@@ -39,7 +38,7 @@ def test_checkout(pool, test_key, db_args):
 
 def test_checkout_options(pool, db_args):
     from memsql.common.connection_pool import PoolConnectionException
-    args = ("memsql.com",) + db_args[1:5] + ({ "connect_timeout": 1 },)
+    args = ("example.com",) + db_args[1:5] + ({ "connect_timeout": 1 },)
     with pytest.raises(PoolConnectionException):
         pool.connect(*args)
 
@@ -173,7 +172,7 @@ def test_fairy_execute(fairy):
 
 def test_fairy_execute_lastrowid(fairy):
     row_id = fairy.execute_lastrowid('SELECT 1')
-    assert isinstance(row_id, six.integer_types)
+    assert isinstance(row_id, int)
 
 @mock.patch('memsql.common.database.Connection')
 def test_socket_issues(mock_class, pool, db_args, test_key):

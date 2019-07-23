@@ -3,17 +3,13 @@
 import _mysql
 import time
 import operator
-import six
 
 try:
     from _thread import get_ident as _get_ident
 except ImportError:
     from thread import get_ident as _get_ident
 
-if six.PY3:
-    from memsql.common.conversions import CONVERSIONS
-else:
-    from MySQLdb.converters import conversions as CONVERSIONS
+from memsql.common.conversions import CONVERSIONS
 
 MySQLError = _mysql.MySQLError
 OperationalError = _mysql.OperationalError
@@ -302,16 +298,10 @@ def escape_query(query, parameters):
         else:
             assert False, 'not sure what to do with parameters of type %s' % type(parameters)
 
-    return _escape_unicode(query)
-
-def _escape_unicode(param):
-    if not six.PY3 and isinstance(param, unicode):
-        return param.encode('utf-8')
-    return param
+    return query
 
 def _escape(param):
     if isinstance(param, (list, tuple)):
-        param = [_escape_unicode(p) for p in param]
-        return ','.join(_mysql.escape_sequence(param, CONVERSIONS))
+        return ','.join(_mysql.escape(p, CONVERSIONS) for p in param)
     else:
-        return _mysql.escape(_escape_unicode(param), CONVERSIONS)
+        return _mysql.escape(param, CONVERSIONS)

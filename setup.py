@@ -12,15 +12,8 @@ REQUIREMENTS = [
     'wraptor',
     'simplejson',
     'python-dateutil<3.0',
-    'six',
+    'mysqlclient==1.3.13',
 ]
-
-if sys.version_info[0] == 3:
-    REQUIREMENTS.append('mysqlclient==1.3.6')
-elif sys.version_info[0] == 2:
-    REQUIREMENTS.append('MySQL-python==1.2.5')
-else:
-    assert False, "MemSQL-Python doesn't support python version %s" % sys.version
 
 class PyTest(TestCommand):
     user_options = [
@@ -96,15 +89,14 @@ setup(
     long_description=open('README.rst').read(),
     classifiers=[
         'License :: OSI Approved :: MIT License',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
     ],
     packages=[
         'memsql',
         'memsql.common',
-        'memsql.common.sql_step_queue',
     ],
     zip_safe=False,
     install_requires=REQUIREMENTS,
