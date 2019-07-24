@@ -3,7 +3,6 @@
 import pytest
 import time
 from memsql.common import database
-import six
 import uuid
 import copy
 
@@ -36,7 +35,7 @@ def test_thread_id(test_db_conn):
 
 def test_connection_options(test_db_args):
     args = copy.deepcopy(test_db_args)
-    args["host"] = "memsql.com"
+    args["host"] = "example.com"
     args["options"] = { "connect_timeout": 1 }
     with pytest.raises(database.OperationalError):
         conn = database.connect(**args)
@@ -85,14 +84,14 @@ class TestQueries(object):
 
     def test_insert(self, x_conn):
         res = x_conn.query('INSERT INTO x (value) VALUES(1)')
-        assert isinstance(res, six.integer_types)
+        assert isinstance(res, int)
         assert res == 1  # 1 affected row
 
         res = x_conn.execute('INSERT INTO x (value) VALUES(1)')
-        assert isinstance(res, six.integer_types)
+        assert isinstance(res, int)
 
         res = x_conn.execute_lastrowid('INSERT INTO x (value) VALUES(1)')
-        assert isinstance(res, six.integer_types)
+        assert isinstance(res, int)
         last_row = x_conn.get('SELECT * FROM x ORDER BY id DESC LIMIT 1')
         assert res == last_row.id
 
@@ -121,18 +120,6 @@ class TestQueries(object):
         rows = x_conn.query('SELECT * FROM x WHERE col1=%(col1)s', col1='⚑☃❄')
         assert len(rows) == 1
         assert rows[0].col1 == '⚑☃❄'
-
-    @pytest.mark.skipif(six.PY3, reason="only works in python 2.x")
-    def test_bytes(self, x_conn):
-        data = uuid.uuid4().bytes
-        x_conn.debug_query('INSERT INTO x (colb) VALUES (%s)', data)
-        rows = x_conn.debug_query('SELECT * FROM x WHERE colb=%s', data)
-        assert len(rows) == 1
-        assert rows[0].colb == data
-
-        rows = x_conn.debug_query('SELECT * FROM x WHERE colb in (%s)', [data, uuid.uuid4().bytes])
-        assert len(rows) == 1
-        assert rows[0].colb == data
 
     def test_queryparams(self, x_conn):
         x_conn.execute('INSERT INTO x (value) VALUES (1), (2), (3)')
