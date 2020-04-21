@@ -1,4 +1,4 @@
 {
     "project_id": "memsql-python",
-    "conduit_uri" : "https:\/\/grizzly.memsql.com\/api\/"
+    "conduit_uri" : "https:\/\/grizzly.internal.memcompute.com\/api\/"
 }
