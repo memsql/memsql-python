@@ -12,7 +12,7 @@ with import <nixpkgs> {}; {
     shellHook = ''
       [ -d venv2 ] || virtualenv venv2
       source venv2/bin/activate
-      pip list  --format freeze | grep MySQL-python==1.2.5 >/dev/null || pip install MySQL-python==1.2.5
+      pip list  --format freeze | grep mysqlclient==1.3.6 >/dev/null || pip install mysqlclient==1.3.6
     '';
   };
 

@@ -22,6 +22,13 @@ elif sys.version_info[0] == 2:
 else:
     assert False, "MemSQL-Python doesn't support python version %s" % sys.version
 
+if sys.version_info[0] == 3:
+    REQUIREMENTS.append('mysqlclient==1.3.6')
+elif sys.version_info[0] == 2:
+    REQUIREMENTS.append('mysqlclient==1.3.6')
+else:
+    assert False, "mysqlclient doesn't support python version %s" % sys.version
+
 class PyTest(TestCommand):
     user_options = [
         ('watch', 'w',
