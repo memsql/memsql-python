@@ -1,4 +1,5 @@
-import _mysql, errno
+from MySQLdb import _mysql
+import errno
 import multiprocessing
 import logging
 from memsql.common import database

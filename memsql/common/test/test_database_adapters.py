@@ -2,8 +2,9 @@
 
 import pytest
 import time
-from memsql.common import database
+from memsql.common import query_builder, database
 import uuid
+import datetime
 import copy
 
 def test_connection_open(test_db_conn):
@@ -94,6 +95,23 @@ class TestQueries(object):
         assert isinstance(res, int)
         last_row = x_conn.get('SELECT * FROM x ORDER BY id DESC LIMIT 1')
         assert res == last_row.id
+
+    def test_insert_qb(self, x_conn):
+        rows = [
+            { 'id': 1, 'value': '2', 'col1': 1223.4, 'col2': datetime.datetime.now(), 'colb': True },
+            { 'id': 2, 'value': None, 'col1': None, 'col2': None, 'colb': None },
+        ]
+        sql, params = query_builder.multi_insert('x', *rows)
+
+        res = x_conn.query(sql, **params)
+        assert isinstance(res, int)
+        assert res == 2  # 2 affected row
+
+        all_rows = x_conn.query('SELECT * FROM x ORDER BY id ASC')
+        assert len(all_rows) == 2
+        assert all_rows[0].value == 2
+        assert all_rows[0].col1 == "1223.4"
+        assert all_rows[1].value == None
 
     def test_select(self, x_conn):
         x_conn.execute('INSERT INTO x (value) VALUES (1), (2), (3)')

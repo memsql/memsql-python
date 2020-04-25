@@ -196,14 +196,14 @@ def test_socket_issues(mock_class, pool, db_args, test_key):
     assert (e.host, e.port, e.user, e.password, e.db_name, e.options, e.pid) == test_key
 
 def test_sql_errors(fairy):
-    from _mysql import ProgrammingError
+    from MySQLdb._mysql import ProgrammingError
     with pytest.raises(ProgrammingError):
         fairy.query('asdf bad query!!')
 
 def test_exception_remapping(pool, db_args, test_db_database):
     from memsql.common.connection_pool import PoolConnectionException
     from memsql.common import errorcodes
-    import _mysql
+    from MySQLdb import _mysql
 
     # check that some operationalerrors get mapped to PoolConnectionException
     bad_db_args = db_args[:-1] + ("aasjdkfjdoes_not_exist",)

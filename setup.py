@@ -12,7 +12,7 @@ REQUIREMENTS = [
     'wraptor',
     'simplejson',
     'python-dateutil<3.0',
-    'mysqlclient==1.3.13',
+    'mysqlclient>=1.4',
 ]
 
 class PyTest(TestCommand):

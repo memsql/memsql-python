@@ -1,6 +1,6 @@
 """A lightweight wrapper around _mysql."""
 
-import _mysql
+from MySQLdb import _mysql
 import time
 import operator
 
@@ -301,7 +301,9 @@ def escape_query(query, parameters):
     return query
 
 def _escape(param):
+    _bytes_to_utf8 = lambda b: b.decode("utf-8") if isinstance(b, bytes) else b
+
     if isinstance(param, (list, tuple)):
-        return ','.join(_mysql.escape(p, CONVERSIONS) for p in param)
+        return ','.join(_bytes_to_utf8(_mysql.escape(p, CONVERSIONS)) for p in param)
     else:
-        return _mysql.escape(param, CONVERSIONS)
+        return _bytes_to_utf8(_mysql.escape(param, CONVERSIONS))
