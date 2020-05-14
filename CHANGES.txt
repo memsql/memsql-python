@@ -1,3 +1,11 @@
+2020-05-14 Version 2.19.2
+    * Move from mysqlclient 1.3.6 to mysqlclient 1.4.6
+
+      mysqlclient 1.4.6 has fix for mariadb + _struct reconnect
+
+2020-04-22 Version 2.19.1
+    * Move from MySQL-python 1.2.5 to mysqlclient=1.3.6
+
 2018-12-18 Version 2.19.0
 
     * Remove explicit pinning of six dependency

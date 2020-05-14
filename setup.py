@@ -13,7 +13,7 @@ REQUIREMENTS = [
     'simplejson',
     'python-dateutil<3.0',
     'six',
-    'mysqlclient==1.3.6',
+    'mysqlclient==1.4.6',
 ]
 
 
