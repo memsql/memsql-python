@@ -1,3 +1,8 @@
+2022-03-17 Version 3.2.0
+
+    * Support mysqlclient > 2.1 (#20)
+    * Fix BINARY column support (#21)
+
 2020-04-25 Version 3.1.0
 
     * Upgrade mysqlclient to 1.4 or greator

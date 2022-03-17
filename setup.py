@@ -16,7 +16,7 @@ REQUIREMENTS = [
     'wraptor',
     'simplejson',
     'python-dateutil<3.0',
-    'mysqlclient>=1.4',
+    'mysqlclient>=1.4&&<3.0',
 ]
 
 class PyTest(TestCommand):
