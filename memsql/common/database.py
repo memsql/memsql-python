@@ -1,7 +1,6 @@
 """A lightweight wrapper around _mysql."""
 
 from MySQLdb import _mysql
-import MySQLdb
 import time
 import operator
 
@@ -55,13 +54,6 @@ class Connection(object):
         if options is not None:
             assert isinstance(options, dict), "Options to database.Connection must be an dictionary of { str: value } pairs."
             args.update(options)
-
-        # Fix for parameter name changes in mysqlclient v2.1.0
-        if MySQLdb.version_info[:2] >= (2, 1):
-            if "db" in args:
-                args["database"] = args.pop("db")
-            if "passwd" in args:
-                args["password"] = args.pop("passwd")
 
         self._db = None
         self._db_args = args
