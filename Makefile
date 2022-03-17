@@ -20,7 +20,3 @@ test-watch:
 .PHONY: flake8
 flake8:
 	flake8 --config=.flake8 .
-
-.PHONY: shell
-shell:
-	nix-shell -A memsqlPython
