@@ -1,6 +1,6 @@
+import os
 import pytest
 from memsql.common import database
-import os
 
 host = os.environ.get('MEMSQL_PYTHON_TEST_HOST', '127.0.0.1')
 
@@ -14,7 +14,7 @@ def test_db_args():
         "host": host,
         "port": 3306,
         "user": 'root',
-        "password": ''
+        "password": 'mysql'
     }
 
 @pytest.fixture

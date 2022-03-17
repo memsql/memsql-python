@@ -6,13 +6,17 @@ from setuptools.command.test import test as TestCommand
 # get version
 from memsql import __version__
 
-import sys
+from pathlib import Path
+
+this_directory = Path(__file__).parent
+long_description = (this_directory / "README.md").read_text()
+
 
 REQUIREMENTS = [
     'wraptor',
     'simplejson',
     'python-dateutil<3.0',
-    'mysqlclient>=1.4',
+    'mysqlclient<2.0',
 ]
 
 class PyTest(TestCommand):
@@ -86,7 +90,8 @@ setup(
     url='http://github.com/memsql/memsql-python',
     license='LICENSE.txt',
     description='Useful utilities and plugins for MemSQL integration.',
-    long_description=open('README.rst').read(),
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     classifiers=[
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 3.4',
