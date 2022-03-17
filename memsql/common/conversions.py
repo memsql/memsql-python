@@ -1,4 +1,4 @@
-from MySQLdb.constants import FIELD_TYPE
+from MySQLdb.constants import FIELD_TYPE, FLAG
 from MySQLdb.converters import conversions, Bool2Str
 from MySQLdb import times, _mysql
 import datetime
@@ -9,10 +9,10 @@ CONVERSIONS = conversions
 def _bytes_to_utf8(b):
     return b.decode('utf-8')
 
-CONVERSIONS[FIELD_TYPE.STRING] = _bytes_to_utf8
-CONVERSIONS[FIELD_TYPE.VAR_STRING] = _bytes_to_utf8
-CONVERSIONS[FIELD_TYPE.VARCHAR] = _bytes_to_utf8
-CONVERSIONS[FIELD_TYPE.BLOB] = _bytes_to_utf8
+CONVERSIONS[FIELD_TYPE.STRING] = ((FLAG.BINARY, bytes), (None, _bytes_to_utf8))
+CONVERSIONS[FIELD_TYPE.VAR_STRING] = ((FLAG.BINARY, bytes), (None, _bytes_to_utf8))
+CONVERSIONS[FIELD_TYPE.VARCHAR] = ((FLAG.BINARY, bytes), (None, _bytes_to_utf8))
+CONVERSIONS[FIELD_TYPE.BLOB] = ((FLAG.BINARY, bytes), (None, _bytes_to_utf8))
 
 def _escape_bytes(b, c):
     return _mysql.string_literal(b, c).decode('utf-8')
