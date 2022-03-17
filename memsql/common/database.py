@@ -35,6 +35,7 @@ class Connection(object):
     We explicitly set the timezone to UTC and the character encoding to
     UTF-8 on all connections to avoid time zone and encoding errors.
     """
+
     def __init__(self, host, port=3306, database="information_schema", user=None, password=None,
                  max_idle_time=7 * 3600, _version=0, options=None):
         self.max_idle_time = max_idle_time
@@ -105,7 +106,12 @@ class Connection(object):
 
     def select_db(self, database):
         self._db.select_db(database)
-        self._db_args['db'] = database
+
+        # Fix for parameter name changes in mysqlclient v2.1.0
+        if MySQLdb.version_info[:2] >= (2, 1):
+            self._db_args['database'] = database
+        else:
+            self._db_args['db'] = database
 
     def ping(self):
         """ Ping the server """
@@ -309,7 +315,8 @@ def escape_query(query, parameters):
     return query
 
 def _escape(param):
-    _bytes_to_utf8 = lambda b: b.decode("utf-8") if isinstance(b, bytes) else b
+    def _bytes_to_utf8(b):
+        return b.decode("utf-8") if isinstance(b, bytes) else b
 
     if isinstance(param, (list, tuple)):
         return ','.join(_bytes_to_utf8(_mysql.escape(p, CONVERSIONS)) for p in param)
