@@ -1,6 +1,10 @@
 name: Test
 
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -8,22 +12,25 @@ jobs:
     services:
       mysql:
         image: mysql:5.7.37
+        ports:
+          - 3306:3306
         env:
           MYSQL_ROOT_PASSWORD: mysql
 
     steps:
       - uses: actions/checkout@v2
+
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: 3.6
+          python-version: 3.9
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install flake8 pytest
+          python -m pip install flake8 pytest mock ordereddict
           pip install .
+
       - name: Run tests
-        env:
-          MEMSQL_PYTHON_TEST_HOST: mysql
         run: |
-          make test
+          pytest memsql
