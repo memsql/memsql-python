@@ -32,7 +32,5 @@ jobs:
           pip install .
 
       - name: Run tests
-        env:
-          MEMSQL_PYTHON_TEST_HOST: 127.0.0.1
         run: |
-          python setup.py test
+          pytest memsql

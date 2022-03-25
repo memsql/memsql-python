@@ -249,9 +249,9 @@ class Row(object):
 
     def __eq__(self, other):
         if isinstance(other, Row):
-            return dict.__eq__(dict(self.items()), other) and all(map(operator.eq, self, other))
+            return (dict(self.items()) == other) and all(map(operator.eq, self, other))
         else:
-            return dict.__eq__(dict(self.items()), other)
+            return dict(self.items()) == other
 
     def __ne__(self, other):
         return not self == other
