@@ -168,13 +168,26 @@ class Connection(object):
         self._db.query(query)
         self._rowcount = self._db.affected_rows()
 
+    def is_connected(self):
+        """Reports whether the connection to MySQL Server is available
+        This method checks whether the connection to MySQL is available.
+        It is similar to ping(), but unlike the ping()-method, either True
+        or False is returned and no exception is raised.
+        Returns True or False.
+        """
+        try:
+            self.ping()
+        except:
+            return False  # This method does not raise
+        return True
+
     def _ensure_connected(self):
         # Mysql by default closes client connections that are idle for
         # 8 hours, but the client library does not report this fact until
         # you try to perform a query and it fails.  Protect against this
         # case by preemptively closing and reopening the connection
         # if it has been idle for too long (7 hours by default).
-        if (self._db is None or (time.time() - self._last_use_time > self.max_idle_time)):
+        if (self._db is None or (time.time() - self._last_use_time > self.max_idle_time) or not self.is_connected()):
             self.reconnect()
         self._last_use_time = time.time()
 
